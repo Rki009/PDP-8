@@ -8,32 +8,14 @@
 //	GPIO 7		Pin 8		PIN_W7	tx data
 //	GPIO 9		Pin 10	PIN_V5	rx data
 //	GND			Pin 12	GND		GND
-	// assign GPIO[7] = uart1_tx;
-	// assign uart1_rx = GPIO[9];
-	// assign dtr = GPIO[5];
 
-// Connect GPS Port, 
+// Connect GPS Port,
 //	============================================
 //	ARDUINO #			JP-?		Description
 //	============================================
 //	ARDUINO_IO[0]		Pin ?		Rx from GPS
 //	ARDUINO_IO[1]		Pin ?		Tx to GPS
 //	ARDUINO_IO[2]		Pin ?		PPS from GPS
-	// assign uart2_rx = ARDUINO_IO[0];
-	// assign ARDUINO_IO[1] = uart2_tx;
-	// wire gps_pps = ARDUINO_IO[2];
-
-//	===========================================================
-//		ESP32 - Running Telnet
-//	===========================================================
-//		ESP32						DE10
-//	----------------------------------------------
-//		GND					....	GND		Pin 12
-//		+5V							+5V		Pin 11
-//		GPIO17/UART2 TX		-\/-	RX		Pin 10
-//		GPIO16/UART2 RX		-/\-	TX		Pin 8
-
-
 
 `define DUAL_CORE 1
 
@@ -87,13 +69,11 @@ module de10(
 	output				GSENSOR_SCLK,
 	inout				GSENSOR_SDI,
 	inout				GSENSOR_SDO,
-	// output			GSENSOR_SDI,
-	// input			GSENSOR_SDO,
 
 	//////////// Arduino //////////
 	inout [15:0]		ARDUINO_IO,
 	inout				ARDUINO_RESET_N,
-	
+
 	// GPIO
 	inout [35:0]		GPIO
 );
@@ -109,7 +89,7 @@ module de10(
 	assign VGA_B = 4'h0;
 	assign VGA_HS = 1'b0;
 	assign VGA_VS = 1'b0;
-	
+
 	assign DRAM_ADDR = 13'd0;
 	assign DRAM_BA = 2'b00;
 	assign DRAM_CAS_N = 1'b1;
@@ -124,22 +104,13 @@ module de10(
 
 	assign ARDUINO_IO = 16'hzzzz;
 	assign ARDUINO_RESET_N = 1'bz;
-	
-	// assign HEX0 = ~8'h00;
-	// assign HEX1 = ~8'h00;
-	// assign HEX2 = ~8'h00;
-	// assign HEX3 = ~8'h00;
-	// assign HEX4 = ~8'h00;
-	// assign HEX5 = ~8'h00;
-	// assign LEDR = 10'h000;
-
 
 	// ****************************************************
 	// System clk and reset signals
 	// ****************************************************
 	// 50 MHz base clock
 	wire clk = MAX10_CLK1_50;
-	
+
 	// reset counter, reset for 15 cycles ...
 	reg [3:0] rst_cnt = 4'h0;
 	wire rst_done = &rst_cnt;
@@ -149,27 +120,19 @@ module de10(
 	end
 	wire rst = ~rst_done;	// reset signal, 1 = reset
 
-	
 	// ****************************************************
 	// GPS Device
-	// ****************************************************	
-	// wire rx = ARDUINO_IO[0];
-	// wire tx = ARDUINO_IO[1];
-	// wire pps = ARDUINO_IO[2];
+	// ****************************************************
 	wire gps_rx;					// GPS recieve data
 	wire gps_tx;					// GPS transmit data
 	assign ARDUINO_IO[1] = gps_tx;
 	assign gps_rx = ARDUINO_IO[0];
 
 	// Serial Port
-	// assign GPIO[7] = rx;	// loop back to serial connector
 	wire tty_rx;					// UART recieve data
 	wire tty_tx;					// UART transmit data
 	assign GPIO[7] = tty_tx;
 	assign tty_rx = GPIO[9];
-	// assign tty_rx = tty_tx;		// loopback
-	// assign GPIO[7] = GPIO[9];	// loopback
-	
 
 	// Switch Register/Status Leds
 	wire [11:0]	switch_reg;	// Switch register
@@ -188,7 +151,7 @@ module de10(
 		.de10_sel(de10_sel), .de10_addr(de10_addr), .de10_we(de10_we),
 		.de10_wdata(de10_wdata), .de10_rdata(de10_rdata)
 		);
-		
+
 	// DE10 LEDS/SEGn and SW interface
 	//	IOT:		Write		Read
 	//	6470		HEX0		--
@@ -220,9 +183,7 @@ module de10(
 		end
 	end
 	assign LEDR[9:0] = leds[9:0];
-	
 
-`ifdef DUAL_CORE
 	// DE10
 	wire de10_2_sel;
 	wire [2:0] de10_2_addr;
@@ -257,27 +218,15 @@ module de10(
 			endcase
 		end
 	end
-`endif
-
-
 
 	wire ok = 1'b1;
-`ifndef DUAL_CORE
-	SEG7_LUT lut0(display24[3:0],   ok, HEX0[6:0]);	// ss
-	SEG7_LUT lut1(display24[7:4],   ok, HEX1[6:0]);
-	SEG7_LUT lut2(display24[11:8],  ok, HEX2[6:0]);	// mm
-	SEG7_LUT lut3(display24[15:12], ok, HEX3[6:0]);
-	SEG7_LUT lut4(display24[19:16], ok, HEX4[6:0]);	// hh
-	SEG7_LUT lut5(display24[23:20], ok, HEX5[6:0]);
-`else
 	//use KEY[1] to select between core 0 and core 1
-	SEG7_LUT lut0((~KEY[1]?display24_2[3:0]:display24[3:0]), ok, HEX0[6:0]);	// ss
-	SEG7_LUT lut1((~KEY[1]?display24_2[7:4]:display24[7:4]),   ok, HEX1[6:0]);
-	SEG7_LUT lut2((~KEY[1]?display24_2[11:8]:display24[11:8]),  ok, HEX2[6:0]);	// mm
+	SEG7_LUT lut0((~KEY[1]?display24_2[3:0]:display24[3:0]), 	 ok, HEX0[6:0]);	// ss
+	SEG7_LUT lut1((~KEY[1]?display24_2[7:4]:display24[7:4]),   	 ok, HEX1[6:0]);
+	SEG7_LUT lut2((~KEY[1]?display24_2[11:8]:display24[11:8]), 	 ok, HEX2[6:0]);	// mm
 	SEG7_LUT lut3((~KEY[1]?display24_2[15:12]:display24[15:12]), ok, HEX3[6:0]);
-	SEG7_LUT lut4((~KEY[1]?display24_2[19:16]:display24[19:16]), ok, HEX4[6:0]);// hh
+	SEG7_LUT lut4((~KEY[1]?display24_2[19:16]:display24[19:16]), ok, HEX4[6:0]);	// hh
 	SEG7_LUT lut5((~KEY[1]?display24_2[23:20]:display24[23:20]), ok, HEX5[6:0]);
-`endif
 
 	// assign HEX0[7] = ~gps_A;
 	assign HEX0[7] = 1'b1;
@@ -286,11 +235,10 @@ module de10(
 	assign HEX3[7] = 1'b1;
 	assign HEX4[7] = 1'b1;
 	assign HEX5[7] = 1'b1;
-	
-	assign switch_reg = { KEY, SW };
-	
-endmodule
 
+	assign switch_reg = { KEY, SW };
+
+endmodule
 
 module SEG7_LUT	(
 	input	[3:0]		hex_in,

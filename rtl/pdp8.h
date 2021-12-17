@@ -7,7 +7,7 @@
 // Skips:
 //		SMA SZA = GE - Great than or Equal to Zero
 //		SPA SNA = LT - Less than Zero
-//		SZA		= EQ - Eqaual to Zero
+//		SZA		= EQ - Equal to Zero
 //
 //	MNEMONIC	CODE	OPERATION
 //	SZA SNl		7460 	Skip if AC = 0 or L = 1 or both.
@@ -36,8 +36,8 @@
 //	A GT B 		SZL SNA		SPA SNA
 
 
-// Compination Instructions:
-//		CIA	7041	Complement and Incement the AC, = Negate the AC
+// Combination Instructions:
+//		CIA	7041	Complement and Increment the AC, = Negate the AC
 //		STL	7120	Set the LINK, LINK <= 1
 //		STA	7240	Set the AC, AC <= 7777
 //		GLK	7204	Get the LINK, {11{0}, AC} <= LINK
@@ -77,13 +77,13 @@
 //	Keyboard/Reader
 //		KSF	6031	Skip the next instruction when the keyboard buffer register is loaded
 //						with an ASCII symbol (causing the keyboard flag to be raised).
-//		KCC	6032	Claer AC, clear keyboard flag.
+//		KCC	6032	Clear AC, clear keyboard flag.
 //		KRS	6034	Transfer the contents of the keyboard buffer into the AC.
 //		KRB	6036	Transfer the contents of the keyboard buffer into the AC, clear the
 //						keyboard flag.
 
 //	Printer/Punch
-//		TSF	6041	Skip the next instruction ih the printer flag is set to 1.
+//		TSF	6041	Skip the next instruction if the printer flag is set to 1.
 //		TCF	6043	Clear the printer flag.
 //		TPC	6044	Load the printer buffer register with the contents of the AC, select and
 //						print the character. (The flag is raised when the action is completed.)
@@ -93,17 +93,17 @@
 // Summary of IOT Instructions, Harris HD-6102
 //		MEDIC - Memory Extension/DMA/Interval Time/Controller
 //	GTF 6004 1 0 0 1 (1) Get Flags
-//	IOF 6002 1 1 0 0 (2) I nterrupt Off
+//	IOF 6002 1 1 0 0 (2) I interrupts Off
 //	RTF 6005 1 1 1 1 (3) Restore Flags
 //	CAF 6007 1 1 1 1 (4) Clear All Flags
 //	CDF 62N1 1 1 1 1 Change Data Field
-//	CIF 62N2 1 1 1 1 Change I nstruction Field
+//	CIF 62N2 1 1 1 1 Change I instruction Field
 //	CDF CIF 62N3 1 1 1 1 Combination of CDF & CIF
 //	RDF 6214 1 1 0 1 Read Data Field
 //	RIF 6224 1 1 0 1 Read Instruction Field
-//	RIB 6234 1 1 0 1 Read I nterrupt Buffer
+//	RIB 6234 1 1 0 1 Read I interrupt Buffer
 //	RMF 6244 1 1 1 1 Restore Memory Field
-//	LlF 6254 1 1 1 1 Load I nstruction Field
+//	LlF 6254 1 1 1 1 Load I instruction Field
 //	CLZE 6130 1 1 1 1 Clear Clock Enable Register per AC
 //	CLSK 6131 0 1 1 1 Skip on Clock Overflow Interrupt
 //	CLOE 6132 1 1 1 1 Set Clock Enable Register per AC
@@ -174,8 +174,8 @@
 //	7002	BSW				NOP
 //	7014	Reserved		RAR RAL
 //	7016	Reserved		RTR RTL
-//	74X1 MQ Instructions Only available with EAE.
-//	7521 SWP MQL MQA
+//	74X1 	MQ Instructions Only available with EAE.
+//	7521 	SWP MQL MQA
 //	Octal codes 7014 and 7016 produced predictable but undocumented
 //	results in the PDP-8/1 and PDP-8/L. In the PDP-8/E these codes are
 //	specifically reserved for future expansion.
@@ -193,23 +193,23 @@
 //	DE10 Led Output
 //	6776		Write the AC[9:0] to LEDR (10 DE10 Status Leds)
 
-`define DEV_CPU		6'o00		// CPU Interrupt Control
-`define DEV_TTY_RX	6'o03		// teletype Keyboard
-`define DEV_TTY_TX	6'o04		// teletype Printer
-`define DEV_GPS_RX	6'o43		// GPS UART Reciever
-`define DEV_GPS_TX	6'o44		// GPS UART Transmitter
-`define DEV_DE10	6'o47		// DE10 Interface
+`define DEV_CPU			6'o00		// CPU Interrupt Control
+`define DEV_TTY_RX		6'o03		// teletype Keyboard
+`define DEV_TTY_TX		6'o04		// teletype Printer
+`define DEV_GPS_RX		6'o43		// GPS UART Receiver
+`define DEV_GPS_TX		6'o44		// GPS UART Transmitter
+`define DEV_DE10		6'o47		// DE10 Interface
 
  
 // Major Opcodes
-`define OP_AND 3'b000	// AND memory with AC
-`define OP_TAD 3'b001	// Transfer and Add to AC
-`define OP_ISZ 3'b010	// INC and Skip on Zero
-`define OP_DCA 3'b011	// Deposit and Clear AC
-`define OP_JMS 3'b100	// JuMp to Subroutine
-`define OP_JMP 3'b101	// JuMP
-`define OP_IOT 3'b110	// Input/Output Transfer
-`define OP_OPR 3'b111	// microcoded OPeRations
+`define OP_AND 			3'b000		// AND memory with AC
+`define OP_TAD 			3'b001		// Transfer and Add to AC
+`define OP_ISZ 			3'b010		// INC and Skip on Zero
+`define OP_DCA 			3'b011		// Deposit and Clear AC
+`define OP_JMS 			3'b100		// JuMp to Subroutine
+`define OP_JMP 			3'b101		// JuMP
+`define OP_IOT 			3'b110		// Input/Output Transfer
+`define OP_OPR 			3'b111		// micro coded OPeRations
 
 
 // CPU Cycle State - use one-shot logic
@@ -236,12 +236,12 @@
 //	115200     27.127     27   0.467%
 //	256000     12.207     12   1.696%
 // 1000000      3.125      3   4.000%
-`define BAUD_300	16'd10417	// 300 = 10417, 
-`define BAUD_9600	16'd326		// 9600 = 325.52, -0.15% 
-`define BAUD_19200	16'd163		// 19200 = 162.76,
-`define BAUD_115200	16'd27		// 115,200 = 27.13, 
-`define BAUD_256000	16'd12		// 256,000 = 12.21
-`define BAUD_1M		16'd3		// 1000000 = 3.125
+`define BAUD_300		16'd10417	// 300 = 10417, 
+`define BAUD_9600		16'd326		// 9600 = 325.52, -0.15% 
+`define BAUD_19200		16'd163		// 19200 = 162.76,
+`define BAUD_115200		16'd27		// 115,200 = 27.13, 
+`define BAUD_256000		16'd12		// 256,000 = 12.21
+`define BAUD_1M			16'd3		// 1000000 = 3.125
 
 `ifdef iverilog
 	`define	BAUD_FACTOR `BAUD_1M		// very fast for simulation

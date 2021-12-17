@@ -11,9 +11,9 @@
 `include "pdp8.h"
 
 //=====================================================
-//	pdp8 - pdp8 top level
+//	pdp8 - pdp8 top level machine
 //=====================================================
-module pdp8(
+module pdp8 (
 	input			clk,
 	input			rst,
 	input [11:0]	switch_reg,		// Switch register
@@ -53,7 +53,7 @@ module pdp8(
 	wire		cpu_iack;		// interrupt acknowledge
 
 
-	pdp8_core core (.clk(clk), .rst(rst),
+	pdp8_cpu cpu (.clk(clk), .rst(rst),
 		.io_dev(io_dev), .io_op(io_op), .io_wdata(io_wdata), .io_rdata(io_rdata), 
 		.io_req(io_req), .io_ack(io_ack), .io_skip(io_skip),
 		.io_caf(io_caf), .io_sac(io_sac), .io_slk(io_slk),
@@ -77,7 +77,7 @@ module pdp8(
 	wire tty_irq;
 	wire gps_irq;
 	wire irq_request = tty_irq | gps_irq;
-	// reg cpu_rtf;		// restore flags
+	//- reg cpu_rtf;		// restore flags
 	assign cpu_irq = cpu_ion & irq_request;
 	always @(posedge clk) begin
 		// ION Queued? May be overwritten by IOF command
@@ -204,9 +204,9 @@ endmodule
 
 
 //=====================================================
-//	pdp8_core - pdp8 CPU Core
+//	pdp8_cpu - pdp8 CPU Core
 //=====================================================
-module pdp8_core(
+module pdp8_cpu (
 	input				clk,
 	input				rst,
 	
@@ -240,6 +240,9 @@ module pdp8_core(
 	parameter mop_jms 	= 4;		// write return address
 
 	
+	//-----------------------------------------------------
+	// Instruction Decomposition
+	//-----------------------------------------------------
 	assign status = {op_opr, op_iot, op_jmp|op_jms, op_dca|op_isz|op_tad|op_and, state[7:0]};
 
 	wire [11:0] insn = (state==`STATE_EXECUTE)?mem_dout:insn_last;
@@ -252,23 +255,9 @@ module pdp8_core(
 	wire op_autoinc = insn[8] & ~insn[7] & (insn[6:3] == 4'b0001) & (op_mtype|op_jtype);
 	wire [6:0] op_offset = insn[6:0];
 
-	// Main Registers
-	reg [11:0]	pc;		// PC - Program Counter
-	reg [11:0]	ac;		// AC - Accumulator
-	reg [11:0]	mq;		// MQ - Multiplier/Quotient register
-	reg	link;			// LINK - Link register
-	
-	// update at the end of the cycle
-	reg [11:0] next_ac;
-	reg next_link;
-	reg [11:0] next_mq;
-	
-	// Program Counter updates
-	wire [11:0] pc_rst = `START_ADDR;	// pc reset value
-	wire [11:0] pc_inc = (rst)?pc_rst:pc + 12'd1;
-	reg [11:0] pc_next;
-
+	//-----------------------------------------------------
 	// Opcodes - 8 basic opcode types
+	//-----------------------------------------------------
 	wire op_and = (op_code==`OP_AND);
 	wire op_tad = (op_code==`OP_TAD);
 	wire op_isz = (op_code==`OP_ISZ);
@@ -278,8 +267,34 @@ module pdp8_core(
 	wire op_iot = (op_code==`OP_IOT);
 	wire op_opr = (op_code==`OP_OPR);
 
+
+	//-----------------------------------------------------
+	// Main Registers
+	//-----------------------------------------------------
+	reg [11:0]	pc;		// PC - Program Counter
+	reg [11:0]	ac;		// AC - Accumulator
+	reg [11:0]	mq;		// MQ - Multiplier/Quotient register
+	reg	link;			// LINK - Link register
+
+	// update at the end of the cycle
+	reg [11:0] next_ac;
+	reg next_link;
+	reg [11:0] next_mq;
+	
+
+
+
+
+	//-----------------------------------------------------
 	// Next pc processing
+	//-----------------------------------------------------
+	reg [11:0] pc_next;
+
+	// Program Counter updates
+	wire [11:0] pc_rst = `START_ADDR;	// pc reset value
+	wire [11:0] pc_inc = (rst)?pc_rst:pc + 12'd1;
 	reg do_skip;
+
 	always @(posedge clk) begin
 		if (rst) begin
 			pc <= pc_rst;
@@ -298,7 +313,10 @@ module pdp8_core(
 	end
 	
 	
-	// wire [2:0] 	mem_field = 0;
+	//-----------------------------------------------------
+	// Core Memory Interface
+	//-----------------------------------------------------
+	//- wire [2:0] 	mem_field = 0;
 	reg [11:0]	mem_raddr;
 	reg [11:0]	mem_waddr;
 	reg 		mem_read;
@@ -307,8 +325,9 @@ module pdp8_core(
 	wire [11:0] mem_dout;
 	reg [2:0]	mem_read_mux;
 	reg [2:0]	mem_write_mux;
+
 	
-	// memory read/write access mux
+	// 	memory read/write access mux
 	always @(*) begin
 		mem_read = 0;
 		mem_write = 0;
@@ -342,11 +361,16 @@ module pdp8_core(
 		endcase
 	end
 	
+
+	// 4k x 12 bit core memory for data and instructions
 	core_memory memory_1 (.clk(clk), .rst(rst),
 		.raddr(mem_raddr), .waddr(mem_waddr), .read(mem_read), .write(mem_write),
 		.din(mem_din), .dout(mem_dout) );
 
-	// processor state machine
+
+	//-----------------------------------------------------
+	// Processor State Machine
+	//-----------------------------------------------------
 	reg [9:0] state;
 	reg [9:0] next_state;
 
