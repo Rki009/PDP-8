@@ -8,6 +8,7 @@
 ## Features
 
 - 4K x 12 bit Memory
+- Extended Memory support for up to 32K x 12
 - GPS Clock Demo on a DE10-Lite FPGA Board
 - Updated Palbart PDP-8 Assembler (version 2.14)
 - PDP-8 Disassembler included
@@ -74,8 +75,11 @@ The PDP-8 source code is included for the GPS application.
 
 ## To Do
 
-- Add support for core memory fields to support 64k x 12 bit memory
-	- Not a high priority for me ;-)
+- Add some more devices
+- Base level - PDP-8E
+- Support for
+	- Harris HD-6120
+	- Intersil IM6100
 
 ## Links
 
