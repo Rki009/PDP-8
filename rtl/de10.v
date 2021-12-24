@@ -17,7 +17,8 @@
 //	ARDUINO_IO[1]		Pin ?		Tx to GPS
 //	ARDUINO_IO[2]		Pin ?		PPS from GPS
 
-`define DUAL_CORE 1
+`define DUAL_CORE 	1
+`define BOOT_DISP24	24'hcDcb8E	// spell out "PDP-8E"
 
 module de10(
 
@@ -167,7 +168,8 @@ module de10(
 	always @(posedge clk) begin
 		if (rst) begin
 			leds <= 12'o0000;
-			display24 <= 24'h000000;
+			// display24 <= 24'h000000;
+			display24 <= `BOOT_DISP24;
 		end
 		else if (de10_sel & de10_we) begin
 			case (de10_addr)
@@ -182,7 +184,6 @@ module de10(
 			endcase
 		end
 	end
-	assign LEDR[9:0] = leds[9:0];
 
 	// DE10
 	wire de10_2_sel;
@@ -227,6 +228,7 @@ module de10(
 	SEG7_LUT lut3((~KEY[1]?display24_2[15:12]:display24[15:12]), ok, HEX3[6:0]);
 	SEG7_LUT lut4((~KEY[1]?display24_2[19:16]:display24[19:16]), ok, HEX4[6:0]);	// hh
 	SEG7_LUT lut5((~KEY[1]?display24_2[23:20]:display24[23:20]), ok, HEX5[6:0]);
+	assign LEDR[9:0] = (~KEY[1])?leds[9:0]:leds_2[9:0];
 
 	// assign HEX0[7] = ~gps_A;
 	assign HEX0[7] = 1'b1;
@@ -240,6 +242,7 @@ module de10(
 
 endmodule
 
+// https://www.dcode.fr/7-segment-display
 module SEG7_LUT	(
 	input	[3:0]		hex_in,
 	input				en,		// enable
@@ -247,22 +250,22 @@ module SEG7_LUT	(
 );
 	always @(*) begin
 		if (en) case(hex_in)	//  GFEDCBA
-		4'h0: seg_out = 7'b1000000;
-		4'h1: seg_out = 7'b1111001;		//	-- A --
-		4'h2: seg_out = 7'b0100100; 	//	|	  |
-		4'h3: seg_out = 7'b0110000; 	//	F	  B
-		4'h4: seg_out = 7'b0011001; 	//	|	  |
-		4'h5: seg_out = 7'b0010010; 	//	-- G --
-		4'h6: seg_out = 7'b0000010; 	//	|	  |
-		4'h7: seg_out = 7'b1111000; 	//	E	  C
-		4'h8: seg_out = 7'b0000000; 	//	|	  |
-		4'h9: seg_out = 7'b0011000; 	//	-- D --
-		4'ha: seg_out = 7'b0001000;
-		4'hb: seg_out = 7'b0000011;
-		4'hc: seg_out = 7'b1000110;
-		4'hd: seg_out = 7'b0100001;
-		4'he: seg_out = 7'b0000110;
-		4'hf: seg_out = 7'b0001110;
+		4'h0: seg_out = 7'b1000000;	// 0
+		4'h1: seg_out = 7'b1111001;	// 1	//	-- A --
+		4'h2: seg_out = 7'b0100100;	// 2	//	|	  |
+		4'h3: seg_out = 7'b0110000;	// 3	//	F	  B
+		4'h4: seg_out = 7'b0011001;	// 4	//	|	  |
+		4'h5: seg_out = 7'b0010010;	// 5	//	-- G --
+		4'h6: seg_out = 7'b0000010;	// 6	//	|	  |
+		4'h7: seg_out = 7'b1111000;	// 7	//	E	  C
+		4'h8: seg_out = 7'b0000000;	// 8	//	|	  |
+		4'h9: seg_out = 7'b0011000;	// 9	//	-- D --
+		4'ha: seg_out = 7'b0001000;	// A
+		4'hb: seg_out = 7'b0111111;	// -
+		4'hc: seg_out = 7'b0001100;	// P
+		4'hd: seg_out = 7'b0100001;	// D
+		4'he: seg_out = 7'b0000110;	// E
+		4'hf: seg_out = 7'b1111111;	// ' '
 		endcase
 		else seg_out  = 7'b1111111;	// disable
 	end

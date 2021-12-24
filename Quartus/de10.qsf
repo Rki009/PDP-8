@@ -444,6 +444,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[33]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[34]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[35]
 
+
 #============================================================
 # Files and Options
 #============================================================
@@ -452,14 +453,23 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to GPIO[35]
 set_global_assignment -name VERILOG_MACRO "QUARTUS=1"
 set_global_assignment -name SEARCH_PATH ../rtl
 
+# set_global_assignment -name VERILOG_MACRO "EXTENDED_MEM=1"
+# set_global_assignment -name VERILOG_MACRO "MEM_SIZE_K=8"
+set_global_assignment -name VERILOG_MACRO "MEM_SIZE_K=4"
+
 set_global_assignment -name VERILOG_FILE ../rtl/de10.v
 set_global_assignment -name VERILOG_FILE ../rtl/pdp8.v
-set_global_assignment -name VERILOG_FILE ../rtl/core4k12.v
+# set_global_assignment -name VERILOG_FILE ../rtl/core4k12.v
+set_global_assignment -name VERILOG_FILE ../rtl/core_memory.v
 set_global_assignment -name VERILOG_FILE ../rtl/teletype.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart_tx.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart_rx.v
 set_global_assignment -name VERILOG_FILE ../rtl/uart_baud1.v
 
+
+#============================================================
+# System Options
+#============================================================
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name TIMING_ANALYZER_MULTICORNER_ANALYSIS ON
 set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL

@@ -11,14 +11,22 @@ module core4k12 (
 
 	
 	// 4k x 12 bits
-	reg [11:0] mem[4095:0] /* ramstyle = "M9K" */ ;
+	reg [11:0] mem[0:4095] /* ramstyle = "M9K" */ ;
 	
+`ifdef IVERILOG
+	initial begin
+		$readmemh("../FOCAL/Focal569.mem", mem);
+	end
+`endif
+
+`ifdef QUARTUS
 	initial begin
 		// $readmemh("core.mif", mem);
 		// $readmemh("../FOCAL/Focal569.mem", mem);
 		
 		$readmemh("../src/GPSClock/gps_clock.mem", mem);
 	end
+`endif
 	
 	always @(posedge clock) begin
 		if (wren) begin

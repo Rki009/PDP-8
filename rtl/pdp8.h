@@ -185,7 +185,7 @@
 `define CORE_4K	1
 // `define CORE_32K 1
 
-`define START_ADDR	12'o7777
+// `define START_ADDR	12'o7777
 `ifndef START_ADDR
 	`define START_ADDR	12'o0200
 `endif
@@ -251,6 +251,23 @@
 	`define	BAUD_FACTOR `BAUD_300		// Teletype = 300 baud
 `endif
 
+
+// `define OLD_WAY
+`ifdef OLD_WAY
 // CORE Memory - xK by 12 bits wide
-// `define CORE_32K_12BITS 1
-`define CORE_4K_12BITS 1
+	`ifdef EXTENDED_MEM
+		`define CORE_32K_12BITS 1
+	`else
+		`define CORE_4K_12BITS 1
+	`endif
+`else
+	`define MEM_12BITS
+`endif
+
+`ifndef MEM_SIZE_K
+	`define MEM_SIZE_K 8		// 8K
+	// Extended Memory Interface
+	`define EXTENDED_MEM
+`endif
+`define MEM_AWIDTH ($clog2(`MEM_SIZE_K*1024))
+

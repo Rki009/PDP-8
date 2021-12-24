@@ -1,4 +1,4 @@
-// PDP-8/E	- PDP-8/E, 12 bit processor, (C) Ron K. Irvine
+// PDP-8/E	- PDP-8/E, 12 bit processor, (C) Ron K. Irvine, 2021
 //
 //	Notes:
 //		Variant: PDP-8/E, 1970, Cost: PDP-8/E - $6,500 
@@ -14,24 +14,24 @@
 //	pdp8 - pdp8 top level machine
 //=====================================================
 module pdp8 (
-	input			clk,
-	input			rst,
-	input [11:0]	switch_reg,		// Switch register
-	output wire [11:0]	status,		// Status output
+	input				clk,
+	input				rst,
+	input [11:0]		switch_reg,		// Switch register
+	output wire [11:0]	status,			// Status output
 	
 	// UART
-	input 			tty_rx,			// Receive  data line input
-	output wire 	tty_tx,
+	input 				tty_rx,			// Receive  data line input
+	output wire 		tty_tx,
 	// GPS
-	input 			gps_rx,			// Receive  data line input
-	output wire 	gps_tx,
+	input 				gps_rx,			// Receive  data line input
+	output wire 		gps_tx,
 	
 	// DE10
-	output wire de10_sel,
-	output wire [2:0] de10_addr,
-	output wire de10_we,
-	output wire [11:0] de10_wdata,
-	input [11:0] de10_rdata
+	output wire 		de10_sel,
+	output wire [2:0] 	de10_addr,
+	output wire 		de10_we,
+	output wire [11:0] 	de10_wdata,
+	input [11:0] 		de10_rdata
 
 );
 
@@ -53,10 +53,21 @@ module pdp8 (
 	wire		cpu_iack;		// interrupt acknowledge
 
 
+	//=====================================================
+	// PDP-8 Cpu with core memory
+	//=====================================================
+	wire non_seq;
+	wire u_irq;
+	wire dataf;			// data field access
+	wire ifetch;
+	// wire [2:0] if_field = non_seq?ib_buf:if_latch;
+	wire [2:0] if_field = if_latch;		// IF - Instruction Field, combinatorial
 	pdp8_cpu cpu (.clk(clk), .rst(rst),
 		.io_dev(io_dev), .io_op(io_op), .io_wdata(io_wdata), .io_rdata(io_rdata), 
 		.io_req(io_req), .io_ack(io_ack), .io_skip(io_skip),
 		.io_caf(io_caf), .io_sac(io_sac), .io_slk(io_slk),
+		.if_field(if_field), .df_field(df_field), .non_seq(non_seq),
+		.ifetch(ifetch), .dataf(dataf), .u_mode(u_mode), .u_irq(u_irq),
 		.cpu_ion(cpu_ion), .cpu_irq(cpu_irq), .cpu_iack(cpu_iack),
 		.cpu_link(cpu_link), .cpu_iret(cpu_iret),
 		.switch_reg(switch_reg), .status(status) );
@@ -74,78 +85,244 @@ module pdp8 (
 	//	CAF      6007  clear all flags
 	wire cpu_sel = io_req & (io_dev == `DEV_CPU);
 	reg ion_delay;		// delay ION by one instruction
+	reg	jmp_delay;		// turn on at next jump
 	wire tty_irq;
 	wire gps_irq;
 	wire irq_request = tty_irq | gps_irq;
 	//- reg cpu_rtf;		// restore flags
-	assign cpu_irq = cpu_ion & irq_request;
+	assign cpu_irq = cpu_ion & irq_request & ~jmp_delay;
+
+	
+	//=====================================================
+	// Extended Memory Interface
+	//		KM8-E Interface
+	//=====================================================
+	reg [2:0]	if_latch;	// IF - Instruction Field, latched value
+	reg [2:0]	df_field;	// DF - Data Field
+
+	reg [6:0] 	save_field;	// SF - save field register, { IF, DF }
+	reg [2:0] 	ib_buf;		// IB - IF update buffer
+	reg ub_buf;				// UB - User update buffer
+	reg ub_ff;				// User Buffer Filip-Flop
+	reg u_mode;				// User Mode, 1 = user, 0 = machine
+	reg	time_share;			// Time Share Bit
+	
+	reg u_int_ff;			// user interrupt ff
+
 	always @(posedge clk) begin
 		// ION Queued? May be overwritten by IOF command
 		if (ion_delay) begin
 			cpu_ion <= 1;
 			ion_delay <= 0;
 		end
+		
+		// on a JMP or JMP latch the IB into IF, update the InstructionFiled Register
+		if (non_seq) begin
+			if_latch <= ib_buf;
+			// ion_delay <= jmp_delay;
+			jmp_delay <= 0;
+		end
+		
+		if (u_irq) begin
+			u_int_ff <= 0;
+		end
 
 		if (rst) begin
 			cpu_ion <= 0;
 			ion_delay <= 0;
+			jmp_delay <= 0;
+			save_field <= 7'o000;
+			if_latch <= 3'b000;
+			ib_buf <= 3'b000;
+			df_field <= 3'b000;
+			ub_buf <= 0;
+			ub_ff <= 0;
+			time_share <= 0;
+			u_mode <= 0;
+			u_int_ff <= 0;
 		end
 		else if(io_caf) begin
 			cpu_ion <= 0;
 			ion_delay <= 0;
 		end
 		else if (cpu_sel) case (io_op)
-		3'o0:	cpu_ion <= 0;		// SKON
-		3'o1:	begin
-			if (cpu_ion == 0) ion_delay <= 1;		// ION
-		end
-		3'o2:	begin
-			cpu_ion <= 0;			// IOF
-			ion_delay <= 0;
-		end
-		
-		3'o5:	begin				// RTF
-			// cpu_rtf <= io_wdata[7];	// delay until next JMP/JMS
-			// ion_delay <= io_wdata[7];	// Restore Interrupt Enable
-			ion_delay <= 1;	// Restore Interrupt Enable ???
-		end
-		default: ;
+			
+			// SKON 6000 - Skip on Interrupts On
+			3'o0:	begin
+				cpu_ion <= 0;	// disable interrupts		
+			end
+
+			// ION	6001 - Set Interrupts On
+			3'o1:	begin
+				if (cpu_ion == 0) ion_delay <= 1;
+			end
+			
+			// IOF 6002 - Clear Interrupt, set OFF
+			3'o2:	begin
+				cpu_ion <= 0;			
+				ion_delay <= 0;
+			end
+			
+			// GTF 6004 - Get Flags
+			3'o4:	begin
+				// cpu_ion <= 0;
+				// ion_delay <= 0;
+			end
+
+			// RTF 6005 - Restore Flags
+			3'o5:	begin
+				// cpu_rtf <= io_wdata[7];	// delay until next JMP/JMS
+				// ion_delay <= io_wdata[7];	// Restore Interrupt Enable
+				// ion_delay <= 1;	// Restore Interrupt Enable ???
+				// ib_buf <= io_wdata[2:0];
+				// df_field <= io_wdata[5:3];
+				df_field <= io_wdata[2:0];
+				ib_buf <= io_wdata[5:3];
+				ub_ff <= io_wdata[6];
+				ion_delay <= io_wdata[7];
+				jmp_delay <= 1;
+			end
+
+			default: ;
 		endcase
+		
+		// 62Nx - IF/DF access
+		if (io_req && io_dev[5:3] == 3'o2) begin
+			case (io_op)
+			
+			// CDF - 62N1, Change Data Field N
+			3'o1:	begin
+				df_field <= io_dev[2:0];		
+			end
+
+			// CIF - 62N2, Change Instruction Field N
+			3'o2:	begin
+				ib_buf <= io_dev[2:0];		
+			end
+
+			// 62N3, CIF/CDF Change Instruction/Data Field N
+			3'o3:	begin
+				df_field <= io_dev[2:0];		
+				ib_buf <= io_dev[2:0];		
+			end
+
+			3'o4:	begin
+				// CINT - 6204, Clear User Interrupt
+				if (io_dev[2:0] == 3'o0) begin
+					 u_int_ff <= 0;
+				end
+
+				// CUF - 6264, Clear User Flag
+				if (io_dev[2:0] == 3'o6) begin
+					 u_mode <= 0;
+				end
+
+				// SUF - 6274, Set User Flag
+				if (io_dev[2:0] == 3'o7) begin
+					 u_mode <= 1;
+				end
+
+				// RMF - 6244, Restore Memory Field
+				if (io_dev[2:0] == 3'o4) begin
+					df_field <= save_field[2:0];
+					ib_buf <= save_field[5:3];
+					// time_share <= io_wdata[6];
+					jmp_delay <= 1;
+				end
+
+				// LIF - 6254, Load Instruction Field
+				if (io_dev[2:0] == 3'o5) begin
+					if_latch <= ib_buf;
+					jmp_delay <= 0;
+				end
+			end
+
+			default:
+				;
+			endcase
+		end
 
 		if (cpu_iack) begin			// Interrupt Acknowledge
 			cpu_ion <= 0;
+			save_field[2:0] <= df_field; 
+			save_field[5:3] <= if_field;
+			save_field[6] <= ub_ff;
+			if_latch <= 0;
+			ib_buf <= 0;
+			df_field <= 0;
 		end
-
 
 		if (cpu_iret) begin			// RFT, delayed until IRET
 			cpu_ion <= 1;			// interrupts back on
 		end
 	end
-
+	
+	
 	reg cpu_skip;
-	reg [11:0] cpu_gtf;
 	reg cpu_sac;		// set AC to new value
 	reg cpu_slk;		// set link
+	reg [11:0] cpu_rdata;
 	always @(*) begin
 		cpu_skip = 0;
-		cpu_gtf = 12'o0000;
+		cpu_rdata = 12'o0000;
 		cpu_sac = 0;
 		cpu_slk = 0;
 		io_caf = 0;
 		if (cpu_sel) case (io_op)
-		3'o0:	cpu_skip = cpu_ion;
+		// SKON, 6000
+		3'o0:	begin
+			cpu_skip = cpu_ion;
+		end
+		
+		// ???
 		3'o3:	cpu_skip = irq_request;
+		
+		// GTF 6004
 		3'o4:	begin
-			cpu_gtf = {cpu_link, 1'b0, irq_request, 1'b0, (cpu_ion|ion_delay), 7'b0000000 };
+			// cpu_rdata = {cpu_link, 1'b0, irq_request, (ion|io_delay|jmp_delay), 1'b0, save_field };
+			cpu_rdata = {cpu_link, 1'b0, irq_request, cpu_ion, 1'b0, save_field };
 			cpu_sac = 1;
 		end
-		3'o5:	begin				// RTF
-			cpu_gtf = io_wdata;
+		
+		// RTF 6005
+		3'o5:	begin
+			cpu_rdata[11] = io_wdata[11];	// restore the LINK
 			cpu_slk = 1;
 		end
 		3'o7:	io_caf = 1;
 		default: ;
 		endcase
+		
+		// 62Nx - IF/DF access
+		if (io_req && io_dev[5:3] == 3'o2) begin
+			// 62x4 - Read
+			if (io_op == 3'o4) begin
+				// RDF - 6214, Read Data Field
+				if (io_dev[2:0] == 3'o1) begin
+					cpu_rdata = io_wdata | {6'b000000, df_field, 3'b000 };
+					cpu_sac = 1;
+				end
+
+				// RIF - 6224, Read Instruction Field
+				if (io_dev[2:0] == 3'o2) begin
+					cpu_rdata = io_wdata | {6'b000000, if_field, 3'b000 };
+					cpu_sac = 1;
+				end
+
+				// RIB - 6234, Read Interrupt Buffer
+				if (io_dev[2:0] == 3'o3) begin
+					cpu_rdata = io_wdata | {6'b000000, save_field[5:0] };
+					cpu_sac = 1;
+				end
+
+				// SINT - 6254, Skip on User Interrupt
+				if (io_dev[2:0] == 3'o5) begin
+					 cpu_skip = u_int_ff;
+				end
+			end
+
+		end
+
 	end
 
 	
@@ -195,11 +372,12 @@ module pdp8 (
 		.tty_rdata(gps_rdata), .tty_sac(gps_sac), .tty_ack(gps_ack), .tty_irq(gps_irq), .tty_skip(gps_skip),
 		.tty_rx(gps_rx), .tty_tx(gps_tx) );
 	
-	assign io_rdata = (cpu_gtf | de10_rdata | tty_rdata | gps_rdata);		// wire OR bus
+	assign io_rdata = (cpu_rdata | de10_rdata | tty_rdata | gps_rdata);		// wire OR bus
 	assign io_sac = (cpu_sac | de10_sac | tty_sac | gps_sac);
 	assign io_slk = (cpu_slk);
 	assign io_skip = (cpu_skip | tty_skip | gps_skip);
 	assign io_ack = (cpu_sel | de10_sel | tty_ack | gps_ack);
+	
 endmodule
 
 
@@ -221,6 +399,18 @@ module pdp8_cpu (
 	input				io_caf,		// clear AC, LINK, and all flags
 	input				io_sac,		// set AC from IO device
 	input				io_slk,		// set LINK from IO device
+	
+	// IF/DF Filed Registers
+	input [2:0]			if_field,	// IF - Instruction Field
+	input [2:0]			df_field,	// DF - Data Field
+	output wire			non_seq,	// non_seq - non sequential instruction fetch (JMP/JMS)
+	output wire			ifetch,		// instruction fetch
+	output wire			dataf,		// Data Field Access, data Indirect
+	input				u_mode,		// u_mode - user mode
+	output reg			u_irq,		// User Interrupt Request (invalid insn)
+
+
+	// CPU Control
 	input				cpu_ion,	// interrupts enabled
 	input				cpu_irq,	// interrupt request
 	output reg			cpu_iack,	// interrupt acknowledge
@@ -232,12 +422,17 @@ module pdp8_cpu (
 	output wire [11:0]	status		// Status output
 );
 
-	// memory access types
-	parameter mop_idle 	= 0;		// idle
-	parameter mop_fetch = 1;		// instruction read
-	parameter mop_read	= 2;		// data read
-	parameter mop_write = 3;		// data wite
-	parameter mop_jms 	= 4;		// write return address
+	// memory read access types
+	parameter mop_idle		= 0;		// idle
+	parameter mop_fetch		= 1;		// instruction read
+	parameter mop_read		= 2;		// data read
+	parameter mop_read_i	= 3;		// read indirect address, TAD, AND, ...
+	parameter mop_jmp_i		= 4;		// read indirect address, JMP, JMS
+
+	// memory write access types
+	parameter mop_write		= 5;		// data write
+	parameter mop_write_i	= 6;		// data write indirect, TAD, AND, ...
+	parameter mop_jms		= 7;		// write return address
 
 	
 	//-----------------------------------------------------
@@ -266,7 +461,12 @@ module pdp8_cpu (
 	wire op_jmp = (op_code==`OP_JMP);
 	wire op_iot = (op_code==`OP_IOT);
 	wire op_opr = (op_code==`OP_OPR);
-
+	
+	assign non_seq = ((state == `STATE_EXECUTE) && (op_jms | op_jmp));
+	assign ifetch = (mem_read_mux == mop_fetch);
+	wire df_read = (mem_read_mux == mop_read_i);
+	wire df_write = (mem_write_mux == mop_write_i);
+	assign dataf = (df_read | df_write);
 
 	//-----------------------------------------------------
 	// Main Registers
@@ -281,9 +481,6 @@ module pdp8_cpu (
 	reg next_link;
 	reg [11:0] next_mq;
 	
-
-
-
 
 	//-----------------------------------------------------
 	// Next pc processing
@@ -316,9 +513,8 @@ module pdp8_cpu (
 	//-----------------------------------------------------
 	// Core Memory Interface
 	//-----------------------------------------------------
-	//- wire [2:0] 	mem_field = 0;
-	reg [11:0]	mem_raddr;
-	reg [11:0]	mem_waddr;
+	reg [14:0]	mem_raddr;
+	reg [14:0]	mem_waddr;
 	reg 		mem_read;
 	reg 		mem_write;
 	reg [11:0]	mem_din;
@@ -331,30 +527,44 @@ module pdp8_cpu (
 	always @(*) begin
 		mem_read = 0;
 		mem_write = 0;
-		mem_raddr = 12'o0000;
-		mem_waddr = 12'o0000;
+		mem_raddr = 15'o00000;
+		mem_waddr = 15'o00000;
 
+		// Read Cycles
 		case(mem_read_mux)
 		mop_idle: begin
 		end
 		mop_fetch: begin
-			mem_raddr = pc_next;
+			mem_raddr = { if_field, pc_next };
 			mem_read = 1;
 		end
 		mop_read: begin
-			mem_raddr = data_raddr;
+			mem_raddr = { if_field, data_raddr };
+			mem_read = 1;
+		end
+		mop_read_i: begin
+			mem_raddr = { df_field, data_raddr };
+			mem_read = 1;
+		end
+		mop_jmp_i: begin
+			mem_raddr = { if_field, data_raddr };
 			mem_read = 1;
 		end
 		default: ;
 		endcase
 
+		// Write Cycles
 		case(mem_write_mux)
 		mop_write: begin
-			mem_waddr = data_waddr;
+			mem_waddr = { if_field, data_waddr };
+			mem_write = 1;
+		end
+		mop_write_i: begin
+			mem_waddr = { df_field, data_waddr };
 			mem_write = 1;
 		end
 		mop_jms: begin
-			mem_waddr = data_waddr;
+			mem_waddr = { if_field, data_waddr };
 			mem_write = 1;
 		end
 		default: ;
@@ -362,10 +572,19 @@ module pdp8_cpu (
 	end
 	
 
-	// 4k x 12 bit core memory for data and instructions
-	core_memory memory_1 (.clk(clk), .rst(rst),
+`ifdef EXTENDED_MEM
+	// 32k x 12 bit core memory for data and instructions
+	memory_unit memory_1 (.clk(clk), .rst(rst),
 		.raddr(mem_raddr), .waddr(mem_waddr), .read(mem_read), .write(mem_write),
 		.din(mem_din), .dout(mem_dout) );
+
+`else
+	// 4k x 12 bit core memory for data and instructions
+	memory_unit memory_1 (.clk(clk), .rst(rst),
+		.raddr({3'b000, mem_raddr[11:0]}), .read(mem_read), 
+		.waddr({3'b000, mem_waddr[11:0]}), .write(mem_write),
+		.din(mem_din), .dout(mem_dout) );
+`endif
 
 
 	//-----------------------------------------------------
@@ -430,6 +649,7 @@ module pdp8_cpu (
 	assign io_req = (insn[11:9]==6)&(state==`STATE_EXECUTE);
 	assign io_wdata = (io_req)?ac:12'o0000;
 
+	reg next_dataf;
 	always @(*) begin
 		pc_next = pc;
 		
@@ -446,6 +666,8 @@ module pdp8_cpu (
 		skip = 0;
 		carry = 1'b0;
 		temp = 12'o0000;
+		u_irq = 0;
+		next_dataf = 0;
 
 		// IO Bus Defaults
 		// io_wdata = 12'o0000;
@@ -463,6 +685,7 @@ module pdp8_cpu (
 			`STATE_FETCH: begin
 				next_state = `STATE_EXECUTE;
 				mem_read_mux = mop_fetch;
+				next_dataf = 0;	// use instruction field
 			end
 			
 			`STATE_INTERRUPT: begin
@@ -530,7 +753,8 @@ module pdp8_cpu (
 						if(op_i) begin
 							if (op_autoinc) next_state = `STATE_AUTOINC;
 							else next_state = `STATE_INDIRECT;
-							mem_read_mux = mop_read;
+							// mem_read_mux = mop_read;
+							mem_read_mux = mop_jmp_i;
 						end
 						else begin
 							next_state = `STATE_JMS;
@@ -545,7 +769,8 @@ module pdp8_cpu (
 						if(op_i) begin
 							if (op_autoinc) next_state = `STATE_AUTOINC;
 							else next_state = `STATE_INDIRECT;
-							mem_read_mux = mop_read;
+							// mem_read_mux = mop_read;
+							mem_read_mux = mop_jmp_i;
 						end
 						else begin
 							next_state = `STATE_FETCH;
@@ -560,9 +785,12 @@ module pdp8_cpu (
 						pc_next = pc_inc;
 						mem_read_mux = mop_fetch;
 
-						if (io_sac) next_ac = io_rdata;
-						if (io_slk) next_link = io_rdata[11];
-						skip = io_skip;
+						if (~u_mode) begin
+							if (io_sac) next_ac = io_rdata;
+							if (io_slk) next_link = io_rdata[11];
+							skip = io_skip;
+						end
+						else u_irq = 1;		// user interrupt
 					end
 
 					`OP_OPR: begin		// OPR - 7000
@@ -602,11 +830,15 @@ module pdp8_cpu (
 							if (insn[7]) next_ac = 12'o0000;
 							
 							// 3 - OSR
-							if (insn[2]) next_ac = next_ac | switch_reg;	// OSR
+							if (insn[2]) begin
+								if (~u_mode) next_ac = next_ac | switch_reg;	// OSR
+								else u_irq = 1;
+							end
+
 							// 4 - HLT
 							if (insn[1]) begin
-								next_state = `STATE_HALT;			// HLT
-								// pc_next = pc;
+								if (~u_mode) next_state = `STATE_HALT;			// HLT
+								else u_irq = 1;
 							end
 							
 						end
@@ -661,7 +893,11 @@ module pdp8_cpu (
 				next_state = `STATE_EXECUTE2;
 				if (op_autoinc) data_raddr = data_raddr1;
 				else data_raddr = mem_dout;
+				next_dataf = 1;	// use data field
 
+				if (op_code == `OP_AND || op_code == `OP_TAD) begin
+					mem_read_mux = mop_read_i;
+				end
 				if (op_code == `OP_DCA) begin
 					// next_state = `STATE_EXECUTE;
 					next_state = `STATE_FETCH;
@@ -670,7 +906,7 @@ module pdp8_cpu (
 
 					data_waddr = data_raddr;
 					mem_din = ac;
-					mem_write_mux = mop_write;
+					mem_write_mux = mop_write_i;
 					// Clear the AC
 					next_ac = 12'o0000;
 				end
@@ -695,7 +931,6 @@ module pdp8_cpu (
 				mem_read_mux = mop_fetch;
 
 				case(op_code)
-
 					`OP_AND: begin
 						// bitwise AND the Memory with the AC
 						next_ac = ac & mem_dout;
@@ -760,10 +995,46 @@ endmodule
 
 
 //=========================================================
-//	Core Memory
+//	Core Memory Unit
 //=========================================================
+`ifdef MEM_12BITS
+module memory_unit(
+	input	clk,
+	input	rst,
+	input	[14:0] waddr,
+	input	write,
+	input	[11:0] din,
+
+	input	[14:0] raddr,
+	input	read,
+	output wire [11:0] dout
+);
+
+	wire [11:0]  q;
+
+	// core4k12 core4k12_1 (
+	core_memory #(.KSIZE(`MEM_SIZE_K)) mem (
+		.clk(clk), 
+		.waddr(waddr[`MEM_AWIDTH-1:0]), .wren(write&~rst), .wdata(din),
+		.raddr(raddr[`MEM_AWIDTH-1:0]), .rdata(q) );
+		
+	// add by-pass logic for write to read address
+	wire bypass = (waddr == raddr) & write;
+	reg [11:0] save_din;
+	reg do_bypass;
+	always @ (posedge clk) begin
+		do_bypass <= bypass;
+		if (bypass) save_din <= din;
+	end
+	assign dout = (~rst)?(do_bypass?save_din:q):12'o0000;
+	// assign dout = {12{~rst}} & q;	// no by-pass
+
+endmodule
+`endif	// MEM_12BITS
+
+
 `ifdef CORE_4K_12BITS
-module core_memory(
+module memory_unit(
 	input	clk,
 	input	rst,
 	input	[11:0] waddr,
@@ -779,7 +1050,8 @@ module core_memory(
 
 	core4k12 core4k12_1 (
 		.clock(clk), 
-		.wraddress(waddr), .wren(write&~rst), .data({4'h0, din}),
+		//-	.wraddress(waddr), .wren(write&~rst), .data({4'h0, din}),
+		.wraddress(waddr), .wren(write&~rst), .data(din),
 		.rdaddress(raddr), .q(q) );
 		
 	// add by-pass logic for write to read address
@@ -796,11 +1068,45 @@ module core_memory(
 endmodule
 `endif	// CORE_4K_12BITS
 
+`ifdef CORE_32K_12BITS
+module memory_unit(
+	input	clk,
+	input	rst,
+	input	[14:0] waddr,
+	input	write,
+	input	[11:0] din,
+
+	input	[14:0] raddr,
+	input	read,
+	output wire [11:0] dout
+);
+
+	wire [11:0]  q;
+
+	core32k12 core32k12_1 (
+		.clock(clk), 
+		//-	.wraddress(waddr), .wren(write&~rst), .data({4'h0, din}),
+		.wraddress(waddr), .wren(write&~rst), .data(din),
+		.rdaddress(raddr), .q(q) );
+		
+	// add by-pass logic for write to read address
+	wire bypass = (waddr == raddr) & write;
+	reg [11:0] save_din;
+	reg do_bypass;
+	always @ (posedge clk) begin
+		do_bypass <= bypass;
+		if (bypass) save_din <= din;
+	end
+	assign dout = (~rst)?(do_bypass?save_din:q):12'o0000;
+	// assign dout = {12{~rst}} & q;	// no by-pass
+
+endmodule
+`endif	// CORE_32K_12BITS
 
 `ifdef CORE_4K_16BITS
 // Quartus likes 16 bit wide memory, but will optimize it dow to 12 bits
 // Could also be done with 3 x 4 bit wide memory banks
-module core_memory(
+module memory_unit(
 	input	clk,
 	input	rst,
 	input	[11:0] waddr,
