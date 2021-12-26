@@ -18,13 +18,16 @@ set "PALBART=%TOOLS%\palbart-2.14.exe"
 %TOOLS%\tape2mem.exe %PROJ%.bin %PROJ%.mem
 %TOOLS%\tape2mif.exe %PROJ%.bin %PROJ%.mif
 
-@pause
-@goto done
-
-
 @echo All ok!
+:: @echo Param: %1
+@if "%1" == "nowait" (
+	/ron/bin/sleep 1.5
+	color 0f
+	exit \b
+)
 @pause
-@goto again
+:: @goto again
+exit \b
 
 :oops
 @echo "****  OOPS  ****"

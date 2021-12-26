@@ -5,5 +5,6 @@
 @rmdir /s /q output_files 2>NUL >NUL
 @rmdir /s /q greybox_tmp 2>NUL >NUL
 
-pause
+sleep 1
+:: pause
 

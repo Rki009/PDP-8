@@ -8,70 +8,73 @@
 GPSSKP=6431					/ GPS - SKIP IF CHAR AVAILABLE
 GPSKIE=6435					/ GPS - INTERUPT ENABLE
 GPSRCV=6436					/ GPS - READ CHARACTER AND CLEAR THE FLAG
-GPSTCF=6442					/ GPS - Clear the printer flag
+GPSTCF=6442					/ GPS - CLEAR THE PRINTER FLAG
 	
-D10S0=6470					/ DE10 - 7 segment 0
-D10S1=6471					/ DE10 - 7 segment 1
-D10S2=6472					/ DE10 - 7 segment 2
-D10S3=6473					/ DE10 - 7 segment 3
-D10S4=6474					/ DE10 - 7 segment 4
-D10S5=6475					/ DE10 - 7 segment 5
-D10LED=6477					/ DE10 - output to leds
+D10S0=6470					/ DE10 - 7 SEGMENT 0
+D10S1=6471					/ DE10 - 7 SEGMENT 1
+D10S2=6472					/ DE10 - 7 SEGMENT 2
+D10S3=6473					/ DE10 - 7 SEGMENT 3
+D10S4=6474					/ DE10 - 7 SEGMENT 4
+D10S5=6475					/ DE10 - 7 SEGMENT 5
+D10LED=6477					/ DE10 - OUTPUT TO LEDS
 
 
-/ Some Constants
+/ SOME CONSTANTS
 NL0000=7300					/ 0000, CLA CLL
-NL0001=7301					/ 0001, CLA CLL lAC
-NL0002=7305					/ 0002, CLA CLL lAC RAL
-NL0003=7325					/ 0003, CLA CLL CML lAC RAL
-NL0004=7307					/ 0004, CLA CLL lAC RTL
-NL0006=7327					/ 0006, CLA CLL CML lAC RTL
-NL0100=7303					/ 0100, CLA lAC BSW
+NL0001=7301					/ 0001, CLA CLL LAC
+NL0002=7305					/ 0002, CLA CLL LAC RAL
+NL0003=7325					/ 0003, CLA CLL CML LAC RAL
+NL0004=7307					/ 0004, CLA CLL LAC RTL
+NL0006=7327					/ 0006, CLA CLL CML LAC RTL
+NL0100=7303					/ 0100, CLA LAC BSW
 NL2000=7332					/ 1024, CLA CLL CML RTR
 NL3777=7360					/ 2047, CLA CLL CMA RAR
 NL4000=7330					/ -0,	CLA CLL CML RAR
 NL6777=7362					/ -1026, CLA CLL CMA RTL
-NL6000=7333					/ -1024, CLA CLL CML lAC RTR
+NL6000=7333					/ -1024, CLA CLL CML LAC RTR
 NL7775=7346					/ -3, CLA CLL CMA RTL
 NL7776=7344					/ -2, CLA CLL CMA RAL
 NL7777=7340					/ -1, CLA CLL CMA
 
-/ KIE=6035					/ for Keyboard
+/ KIE=6035					/ FOR KEYBOARD
 
 		*0000
-		0000				/ Interrupt return address
+		0000				/ INTERRUPT RETURN ADDRESS
 		JMP I .+1
-		IRQSVR				/ Interrupt Service Routine
+		IRQSVR				/ INTERRUPT SERVICE ROUTINE
 
 SAVEAC,	0000
 SAVEL,	0000
-IRQCNT,	0000				/ Count interrupts
+IRQCNT,	0000				/ COUNT INTERRUPTS
 
 		*0010
-AIX1,	0000				/ TEMP for auto indexing
+AIX1,	0000				/ TEMP FOR AUTO INDEXING
+AIX2,	0000				/ TEMP FOR AUTO INDEXING
 
 		*0020
-ARG1,	0000				/ Function Arguments
+ARG1,	0000				/ FUNCTION ARGUMENTS
 ARG2,	0000
 ARG3,	0000
 ARG4,	0000
 
-TMP1,	0000				/ TEMP Variables
+TMP1,	0000				/ TEMP VARIABLES
 TMP2,	0000
 
 
 CHAR,	0000				/ IF !=0, RECIEVED CHARACTER
+CHAR2,	0000				/ IF !=0, RECIEVED CHARACTER
 
-/ Constants
+/ CONSTANTS
 BMASK,	0377
 CMASK,	0177
-DOLLAR,	"$					/ GPS MESSAGE start
-STAR,	"*					/ GPS MESSAGE end, checksum
+DOLLAR,	"$					/ GPS MESSAGE START
+STAR,	"*					/ GPS MESSAGE END, CHECKSUM
 CR,		215					/ CARRAGE RETURN
 K0200,	0200
 K5252,	5252
 K0037,	0037
 K0300,	0300
+K0017,	0017
 INDEX,	0					/ GENERAL INDEX
 
 / GPS MESSAGE BUFFER
@@ -90,22 +93,22 @@ DOGPS,	0					/ FLAG FOR GPS MESSAGE READY TO PROCESS
 HOUR,	0000				/ HOUR IN BCD
 MINUTE,	0000				/ MINUTE IN BCD
 SECOND,	0000				/ SECOND IN BCD
-K0017,	0017
 TZ,		7					/ BANGKOK
-HR24,	-24
+MHR24,	7750				/ -24, CORRECTION FOR 24 HR ROLLOVER
 
 
 // HEXF=	JMS I .;	HEXFUN
 HEXF,	HEXFUN				/ CONVERT AC HEX CHAR TO VALUE
-XOR,	XORFUN				/ exclusive OR function
-DISPLAY,SEGFUN				/ DISPLAY THE ac ON 7 SEGMENTS
+XOR,	XORFUN				/ EXCLUSIVE OR FUNCTION
+DISPLAY,SEGFUN				/ DISPLAY THE AC ON 7 SEGMENTS
 BIN2BCD,BINBCD				/ CONVERT BIN TO BCD
 BCD2BIN,BCDBIN				/ CONVERT BCD TO BIN
 
 // HEXF=	JMS I .;	HEXFUN
 
+
 /==============================================
-/	Start
+/	START
 /==============================================
 		*0200				/ LOCATE PROGRAM STARTING AT ADDR 200
 START,	CLA					/ CLEAR ACCUMULATOR
@@ -116,11 +119,11 @@ START,	CLA					/ CLEAR ACCUMULATOR
 		D10S3				/ CLEAR 7 SEG DISPLAY
 		D10S4				/ CLEAR 7 SEG DISPLAY
 		D10S5				/ CLEAR 7 SEG DISPLAY
-		LAS
-		D10LED				/ CLEAR LEDR
+		LAS					/ READ THE SWITCH REGISTER
+		D10LED				/ DISPLAY SWITCH REGISTER
 		AND K0037
 		DCA TZ				/ SAVE SR[4..0]
-		GPSTCF				/ GPS - Clear the printer flag
+		GPSTCF				/ GPS - CLEAR THE PRINTER FLAG
 		CLA IAC				/ AC = 1 (ENABLE)
 		GPSKIE				/ GPS - INTERRUPT ENABLE
 		TAD HELLO			/ HELLO STRING
@@ -138,14 +141,17 @@ MAIN,	CLA CLL
 		TAD CHAR
 		CLA					/ CHAR <= 0, INDICATE FINISHED
 		DCA	CHAR
-MAIN2,	CLA CLL
+
+MAIN2,	JMS GPS				/ PROCESS ANY INCOMING GPS CHARACTERS
+		
+MAIN3,	CLA CLL
 		TAD DOGPS
 		SNA					/ MESSAGE WAITING?
 		JMP MAIN
 		JMS NMEA			/ PROCESS GPS MESSAGE
 		CLA CLL
 		DCA DOGPS			/ CLEAR THE FLAG
-		JMP MAIN			/ Wait for Interrupt
+		JMP MAIN			/ WAIT FOR INTERRUPT
 
 
 ECHO,	KSF					/ ANY CHARACTERS?
@@ -208,7 +214,7 @@ HELLO,	.					/ 1ST WORD IS ADDR OF STRING
 
 		PAGE
 /==============================================
-/	Interrupt Service Routine
+/	INTERRUPT SERVICE ROUTINE
 /==============================================
 IRQSVR,	DCA SAVEAC
 		RAL
@@ -226,15 +232,40 @@ IRQSVR,	DCA SAVEAC
 		KRB					/ READ THE CHAR
 		DCA	CHAR
 
+		/------------------------------
 		/ GPS ...
-IRQ1,	GPSTCF				/ GPS - Clear the printer flag
+		/------------------------------
+IRQ1,	GPSTCF				/ GPS - CLEAR THE PRINTER FLAG
 		GPSSKP				/ GPS - SKIP IF CHAR AVAILABLE
 		JMP RETI
 		GPSRCV				/ GPS - READ CHARACTER AND CLEAR THE FLAG
 		AND CMASK			/ 7 BIT ASCII
 		TAD K0200			/ SET BIT 7 HIGH
+		// D10LED
+		JMS NEWCH
+		JMP RETI
+
+RETI,	CLA CLL
+		TAD SAVEL
+		RAR
+		TAD SAVEAC
+		ION					/INTERRUPTS BACK ON AFTER JMP
+		JMP I 0				/RETURN FROM INTERRUPT
+
+
+
+		PAGE
+/==============================================
+/	GPS PROCESSING
+/==============================================
+		PAGE
+GPS,	0000
+		JMS	GETCH			/ GET NEXT CHAR
+		SPA
+		JMP I GPS			/ EOF, NOTHING THERE
+		/ D10LED
 		DCA	CHAR
-		// ready to process interrupt
+		// READY TO PROCESS INTERRUPT
 		TAD CHAR			/ IF CR, RESET TO STATE 0
 		CIA
 		TAD CR
@@ -242,22 +273,26 @@ IRQ1,	GPSTCF				/ GPS - Clear the printer flag
 		JMP I STATE
 		TAD SADDR0
 		DCA STATE
-		JMP RETI
-
+		JMP I GPS
+		
+		/------------------------------
 		/ SEARCH FOR '$', START OF MESSAGE
+		/------------------------------
 STATE0,	CLA
 		TAD CHAR			/ IF '$', NEXT STATE
 		CIA
 		TAD DOLLAR
 		SZA
-		JMP RETI
+		JMP I GPS
 		TAD SADDR1
 		DCA STATE
 		DCA GPSSUM
 		DCA GPSCNT
-		JMP RETI
+		JMP I GPS
 
+		/------------------------------
 		/ COLLECT MESSAGE
+		/------------------------------
 STATE1,	CLA
 		TAD CHAR			/ IF '*', NEXT STATE
 		CIA
@@ -266,7 +301,7 @@ STATE1,	CLA
 		JMP ST001
 		TAD SADDR2
 		DCA STATE
-		JMP RETI
+		JMP I GPS
 ST001,	CLA
 		/ TAD CHAR			/ ADD ANOTHER CHARACTER TO THE CHECKSUM
 		/ AND CMASK			/ JUST 7 BIT ASCII SUM
@@ -290,7 +325,7 @@ ST001,	CLA
 		DCA GPSCNT
 		TAD CHAR
 		DCA I INDEX			/ SAVE THE CHARACTER
-		JMP RETI
+		JMP I GPS
 
 
 		/ GET 2 HEX CHECKSUM CHARS
@@ -302,7 +337,7 @@ STATE2,	CLA					/ 1'ST HEX OF CHECKSUM
 		CLL RTL
 		RTL
 		DCA GPSCHK
-		JMP RETI
+		JMP I GPS
 
 STATE3,	CLA					/ 2'ND HEX OF CHECKSUM
 		TAD SADDR0
@@ -321,15 +356,9 @@ STATE3,	CLA					/ 2'ND HEX OF CHECKSUM
 		// JMS NMEA			/ PROCESS THE MESSAGE
 		ISZ DOGPS			/ HANDLE IN MAIN LOOP
 		NOP
-		JMP RETI
+		JMP I GPS
 
 
-RETI,	CLA CLL
-		TAD SAVEL
-		RAR
-		TAD SAVEAC
-		ION					/Interrupts back on after JMP
-		JMP I 0				/Return from interrupt
 
 
 
@@ -338,13 +367,13 @@ RETI,	CLA CLL
 HEX0,	0
 MZERO,	-0060				/ - '0'
 MSEVEN,	-0007				/ -7
-MNINE,	-0011				/ -9
+MTEN,	-0012				/ -10
 HEXFUN,	0
 		AND CMASK
 		TAD MZERO
 		DCA HEX0
 		TAD HEX0
-		TAD MNINE
+		TAD MTEN
 		SMA					/ + = A-F
 		JMP HEXAF
 		CLA
@@ -357,10 +386,10 @@ HEXAF,	CLA
 		JMP I HEXFUN
 
 
-/==============================================
+/======================================================================
 /	NMEA MESSAGE
 /	$GPRMC,055223.00,A,2345.25774,N,12345.17913,E,1.826,,060221,,,A*7A
-/==============================================
+/======================================================================
 GPRMC,	4235				/ HASH VALUE OF "GPRMC"
 NMEA,	0
 		/ CLA
@@ -377,7 +406,6 @@ NMEA,	0
 		TAD I AIX1			/ SHOULD BE THE 1ST CHARACTER 'M'
 		RAL
 		TAD I AIX1			/ SHOULD BE THE 1ST CHARACTER 'C', HASH = 4235
-		/ D10LED
 		CIA					/ NEGATE
 		TAD GPRMC
 		SZA					/ IF "GPRMC" MESSAGE ...
@@ -424,44 +452,35 @@ NMEA,	0
 		JMP I NMEA
 
 
+		/------------------------------
 		/ ADJUST HOUR FOR TIME ZONE
+		/------------------------------
 ADJTZ,	0000				/ NOW ADD TIMEZONE
+		JMS	READTZ
 		CLA CLL
 		TAD HOUR
 		JMS BCDBIN			/ CONVERT BCD TO BINARY
 		TAD	TZ				/ ADD TIMEZONE ADJUST IN BINARY
-		DCA TMP1			/ CHECK FOR 24HR OVERFLOW
-		TAD TMP1
-		TAD HR24			/ SUBTRACT 24HR
-		SNA					/ IF <24HR, LOAD ORIGINAL VAULE, OTHERWISE NEW (HOUR-24) VALUE
-		JMP .+3
-		CLA
+		DCA TMP1			/ SAVE ADJUSTED TIME
+
+		TAD TMP1			/ CHECK FOR 24HR OVERFLOW
+		TAD MHR24			/ SUBTRACT 24HR
+		SPA					/ IF <24HR, LOAD ORIGINAL VAULE, OTHERWISE NEW (HOUR-24) VALUE
+		JMP ADJTZ1			/ NO ADJUSTMENT NEEDED
+		DCA	TMP1			/ SAVE ADJUSTMENT
+		
+ADJTZ1,	CLA
 		TAD TMP1
 		JMS BINBCD			/ CONVERT BACK TO BCD
 		DCA HOUR
 		JMP I ADJTZ
 
-		/ DISPLAY THE CURRENT TIME
-DTIME,	0000
-		CLA					/ DISPLAY HOUR
-		TAD HOUR
-		D10S4
-		RTR
-		RTR
-		D10S5
-		CLA					/ DISPLAY MINUTE
-		TAD MINUTE
-		D10S2
-		RTR
-		RTR
-		D10S3
-		CLA					/ DISPLAY SECOND
-		TAD SECOND
-		D10S0
-		RTR
-		RTR
-		D10S1
-		JMP I DTIME
+READTZ, 0000
+		LAS					/ READ THE SWITCH REGISTER
+		D10LED				/ DISPLAY SWITCH REGISTER
+		AND K0037
+		DCA TZ				/ SAVE SR[4..0]
+		JMP I READTZ
 
 
 /==============================================
@@ -517,13 +536,16 @@ TABLE,	-1440				/ -8OO(10)
 		-0024				/ -20
 		-0012				/ -10
 
+		/----------------------------------
+		/ BCDBIN - CONVERT BCD TO BINARY
+		/----------------------------------
 BCDBIN,	0000				/ ABC IN BCD CODE IN AC
 		DCA TEMPPP
 		TAD TEMPPP			/ 16(16A + B) + C
 		AND MASKKA			/ 16(16A)
 		CLL RAR				/ 8(16A)
 		DCA TEMPPQ
-		TAD TEMPPQ			/ 8(l6A)
+		TAD TEMPPQ			/ 8(L6A)
 		RTR					/ 2(16A)
 		TAD TEMPPQ			/ 10(16A)
 		TAD TEMPPP			/ 16(26A + B) + C
@@ -535,8 +557,8 @@ BCDBIN,	0000				/ ABC IN BCD CODE IN AC
 		RTR					/ 6 (26A + B)
 		CIA					/ 6(26A + B)
 		TAD TEMPPP			/ 16(16A + B) + C -6(26A+ B)
-							/ = 16x16A - 6x26A + 16B - 6xB+C
-							/ = 100A + lOB + C
+							/ = 16X16A - 6X26A + 16B - 6XB+C
+							/ = 100A + LOB + C
 		JMP I BCDBIN		/ BINARY VALUE IN AC
 TEMPPP,	0000
 TEMPPQ,	0000
@@ -546,53 +568,289 @@ MASKKB,	7760				/ MASK FOR MOST SIG. EIGHT BITS
 
 
 /==============================================
-/	GPS Interface, LOOP TO TTY
+/	GPS INTERFACE, LOOP TO TTY
 /==============================================
-GPS,	GPSSKP				/ ANYTHING FROM THE GPS?
+GPSTTY,	GPSSKP				/ ANYTHING FROM THE GPS?
 		JMP .-1
 		GPSRCV				/ GET THE CHARACTER
 		TLS					/ WRITE AC TO THE OUTPUT DEVICE (TTY)
 		TSF					/ IF TTY IS READY, SKIP NEXT INSTRUCTION.
 		JMP .-1				/ TTY IS NOT READY, SO CHECK AGAIN
-		JMP GPS
+		JMP GPSTTY
 
 
-/ Logical XOR Function
+/==============================================
+/ LOGICAL XOR FUNCTION
+/==============================================
 XORFUN,	0000
-		CLA					/ clear accumulator (AC) since all we have is add!
-		TAD ARG1			/ add (TAD) ArgOne to the just-zeroed AC
-		AND ARG2			/ AND ArgTwo to determine where the carrys will be
-		CLL RAL				/ clear the LINK (CLL) and rotate the accumulator left (RAL)
-		CMA IAC				/ compliment (CMA) & increment (IAC) the accumulator (negate)
-		TAD ARG1			/ add the first argument to the negated accumulator
-		TAD ARG2			/ and add the second argument as well
-		JMP I XORFUN		/ the accumulator now contains the XOR of ArgOne & ArgTwo
+		CLA					/ CLEAR ACCUMULATOR (AC) SINCE ALL WE HAVE IS ADD!
+		TAD ARG1			/ ADD (TAD) ARGONE TO THE JUST-ZEROED AC
+		AND ARG2			/ AND ARGTWO TO DETERMINE WHERE THE CARRYS WILL BE
+		CLL RAL				/ CLEAR THE LINK (CLL) AND ROTATE THE ACCUMULATOR LEFT (RAL)
+		CMA IAC				/ COMPLIMENT (CMA) & INCREMENT (IAC) THE ACCUMULATOR (NEGATE)
+		TAD ARG1			/ ADD THE FIRST ARGUMENT TO THE NEGATED ACCUMULATOR
+		TAD ARG2			/ AND ADD THE SECOND ARGUMENT AS WELL
+		JMP I XORFUN		/ THE ACCUMULATOR NOW CONTAINS THE XOR OF ARGONE & ARGTWO
 
+
+		PAGE
+/==============================================
 / DISPLAY - DISPLAY THE AC ON 7 SEG, JMS I DISPLAY
+/==============================================
 SEGV0,	0
-SEGV1,	0
+DISPA,	DISP6
+DISP6,	0000	/ 6 X 7 SEGMENT DISPLAY
+		0000
+		0000
+		0000
+		0000
+		0000
+		
 SEGFUN,	0
 		DCA SEGV0
+		TAD DISPA
+		DCA AIX2
 		TAD SEGV0			/ DISPLAY THE AC, BOTTOM 3 DISPLAYS
-		D10S0
+		JMS SVX
 		RTR
 		RTR
-		D10S1
+		JMS SVX
 		RTR
 		RTR
-		D10S2
+		JMS SVX
 		CLA
 		TAD SEGFUN			/ DISPLAY CALLER, TOP 3 DISPLAYS
-		D10S3
+		JMS SVX
 		RTR
 		RTR
-		D10S4
+		JMS SVX
 		RTR
 		RTR
-		D10S5
+		JMS SVX
+		
+		CLA
+		TAD DISPA
+		DCA AIX2
+		CLA
+		TAD I AIX2
+		D10S0					/ DISPLAY 0
+		CLA
+		TAD I AIX2
+		D10S1					/ DISPLAY 1
+		CLA
+		TAD I AIX2
+		D10S2					/ DISPLAY 2		
+		CLA
+		TAD I AIX2
+		D10S3					/ DISPLAY 3
+		CLA
+		TAD I AIX2
+		D10S4					/ DISPLAY 4
+		CLA
+		TAD I AIX2
+		D10S5					/ DISPLAY 5
+		
 		CLA
 		TAD SEGV0
 		JMP I SEGFUN
+
+
+		/ DISPLAY THE CURRENT TIME
+DTIME,	0000
+		TAD DISPA
+		DCA AIX2
+		CLA					/ DISPLAY SECOND
+		TAD SECOND
+		JMS SVX
+		RTR
+		RTR
+		JMS SVX
+		CLA					/ DISPLAY MINUTE
+		TAD MINUTE
+		JMS SVX
+		RTR
+		RTR
+		JMS SVX
+		CLA					/ DISPLAY HOUR
+		TAD HOUR
+		JMS SVX
+		RTR
+		RTR
+		JMS SVX
+
+
+		CLA
+		TAD DISPA
+		DCA AIX2
+		CLA
+		TAD I AIX2
+		D10S0					/ DISPLAY H1
+		CLA
+		TAD I AIX2
+		D10S1					/ DISPLAY H0
+		CLA
+		TAD I AIX2
+		D10S2					/ DISPLAY M1		
+		CLA
+		TAD I AIX2
+		D10S3					/ DISPLAY M0
+		CLA
+		TAD I AIX2
+		D10S4					/ DISPLAY S1
+		CLA
+		TAD I AIX2
+		D10S5					/ DISPLAY S0
+
+		JMP I DTIME
+		
+
+		
+/ SVX - ADD 4 BIT HEX VALUE TO THE DISPLAY
+SEGV1,	0
+SVMASK,	0017
+SVX,	0000
+		DCA	SEGV1
+		TAD SEGV1
+		AND SVMASK
+		JMS SEG7
+		DCA I AIX2
+		TAD SEGV1
+		JMP I SVX
+		
+		PAGE
+/==============================================
+/ SEG7 - CONVERT AC INTO 7 SEGMENT DISPLAY
+/==============================================
+/			-- A --
+/			|	  |
+/			F	  B
+/			|	  |
+/			-- G --
+/			|	  |
+/			E	  C
+/			|	  |
+/			-- D --
+SEG7,	0000
+		AND K0037
+		TAD S7TAA
+		DCA S7IDX
+		TAD I S7IDX
+		JMP I SEG7
+S7TAA,	S7TAB
+S7IDX,	0000
+		
+// S7TAB,	0100			/ 0
+// 		0171			/ 1	//	-- A --
+// 		0044			/ 2	//	|	  |
+// 		0060			/ 3	//	F	  B
+// 		0031			/ 4	//	|	  |
+// 		0022			/ 5	//	-- G --
+// 		0002			/ 6	//	|	  |
+// 		0170			/ 7	//	E	  C
+// 		0000			/ 8	//	|	  |
+// 		0030			/ 9	//	-- D --
+// 		0010			/ A
+// 		0003			/ B
+// 		0106			/ C
+// 		0041			/ D
+// 		0006			/ E
+// 		0016			/ F
+// 
+// 		/ EXTRA SYMBOLS
+// 		0177			/ ' '
+// 		0077			/ -
+// 		0014			/ P
+
+// HEX DISPLAY CONSTANTS, COMMON ANODE
+S7TAB,	0077	// 0
+		0006	// 1	//	-- A --
+		0133	// 2	//	|	  |
+		0117	// 3	//	F	  B
+		0146	// 4	//	|	  |
+		0155	// 5	//	-- G --
+		0175	// 6	//	|	  |
+		0007	// 7	//	E	  C
+		0177	// 8	//	|	  |
+		0147	// 9	//	-- D --
+		0167	// A
+		0174	// B
+		0071	// C
+		0136	// D
+		0171	// E
+		0161	// F
+		/ EXTRA SYMBOLS
+		0100	// -
+		0163	// P
+		0000	// ' '
+		
+
+/==============================================
+/ CIRCULAR BUFFER FOR GPS INTERRUPT CHARACTERS
+/	16 CHARACTER IN LENGTH
+/	THE BUFFER MUST BE ALIGNED TO 16 TO ALLOW
+/	THE BOTTOM 4 BITS OF THE INDEXES TO BE USED
+/	AS A MOD 16 COUNTER, THE "PAGE" 128 WORD ALIGNS
+/==============================================
+	PAGE
+INTBUF,	0000				/ GPS INTERRUPT BUFFER
+		0000				/ !!! THIS BUFFER MUST BE X16 ALIGNED !!!
+		0000
+		0000
+		0000
+		0000
+		0000
+		0000
+		0000
+		0000
+		0000
+		0000
+		0000
+		0000
+		0000
+		0000
+IBEND,						/ END OF BUFFER
+
+T3,		0000
+IBADDR,	INTBUF
+INPTR,	INTBUF
+OUTPTR,	INTBUF
+
+/ NEWCH - ADD A CHARACTER TO THE BUFFER
+NEWCH,	0000
+		/ D10LED
+		DCA I INPTR			/ SAVE THE NEW CHARACTER
+		TAD INPTR			/ UPDATE THE POINTER
+		IAC
+		AND K0017			/ WRAP
+		TAD IBADDR
+		DCA INPTR
+		JMP I NEWCH			/ RETURN
+
+		
+/ GETCH - GET A CHARACTER FROM THE BUFFER		
+GETCH,	0000
+		CLA
+		TAD OUTPTR
+		CIA
+		TAD INPTR
+		/ D10LED
+		SZA
+		JMP GETCH1
+		NL7777
+		JMP I GETCH			/ RETURN EOF (7777)
+
+GETCH1,	CLA
+		TAD I OUTPTR
+		DCA T3
+		TAD OUTPTR
+		IAC
+		AND K0017
+		TAD IBADDR
+		DCA OUTPTR
+		TAD T3		
+		JMP I GETCH
+
+		
 
 		*7400
 MSGBUF,	0000				/ 128 WORD MESSAGE BUFFER

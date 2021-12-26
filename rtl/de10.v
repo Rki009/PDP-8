@@ -18,7 +18,29 @@
 //	ARDUINO_IO[2]		Pin ?		PPS from GPS
 
 `define DUAL_CORE 	1
-`define BOOT_DISP24	24'hcDcb8E	// spell out "PDP-8E"
+// `define BOOT_DISP24	24'hcDcb8E	// spell out "PDP-8E"
+
+// `define COMMON_CATHODE
+// HEX Display Constants, Common Anode
+`define HEX_0	8'b00111111	// 0
+`define HEX_1	8'b00000110	// 1	//	-- A --
+`define HEX_2	8'b01011011	// 2	//	|	  |
+`define HEX_3	8'b01001111	// 3	//	F	  B
+`define HEX_4	8'b01100110	// 4	//	|	  |
+`define HEX_5	8'b01101101	// 5	//	-- G --
+`define HEX_6	8'b01111101	// 6	//	|	  |
+`define HEX_7	8'b00000111	// 7	//	E	  C
+`define HEX_8	8'b01111111	// 8	//	|	  |
+`define HEX_9	8'b01100111	// 9	//	-- D --
+`define HEX_A	8'b01110111	// A
+`define HEX_B	8'b01111100	// B
+`define HEX_C	8'b00111001	// C
+`define HEX_D	8'b01011110	// D
+`define HEX_E	8'b01111001	// E
+`define HEX_F	8'b01110001	// F
+`define HEX_DS	8'b01000000	// -
+`define HEX_P	8'b01110011	// P
+`define HEX_SP	8'b00000000	// ' '
 
 module de10(
 
@@ -121,23 +143,25 @@ module de10(
 	end
 	wire rst = ~rst_done;	// reset signal, 1 = reset
 
+	assign switch_reg = { KEY, SW };
+
 	// ****************************************************
 	// GPS Device
 	// ****************************************************
-	wire gps_rx;					// GPS recieve data
+	wire gps_rx;					// GPS receive data
 	wire gps_tx;					// GPS transmit data
 	assign ARDUINO_IO[1] = gps_tx;
 	assign gps_rx = ARDUINO_IO[0];
 
 	// Serial Port
-	wire tty_rx;					// UART recieve data
+	wire tty_rx;					// UART receive data
 	wire tty_tx;					// UART transmit data
 	assign GPIO[7] = tty_tx;
 	assign tty_rx = GPIO[9];
 
 	// Switch Register/Status Leds
-	wire [11:0]	switch_reg;	// Switch register
-	wire [11:0]	status;			// Status output
+	wire [11:0]	switch_reg;			// Switch register
+	wire [11:0]	status;				// Status output
 	// DE10
 	wire de10_sel;
 	wire [2:0] de10_addr;
@@ -164,21 +188,25 @@ module de10(
 	//	6476		--			--
 	//	6477		LEDR		--
 	reg [11:0] leds;
-	reg [23:0] display24;
+	reg [7:0] display24 [0:5];
 	always @(posedge clk) begin
 		if (rst) begin
+			display24[5] <= `HEX_P;
+			display24[4] <= `HEX_D;
+			display24[3] <= `HEX_P;
+			display24[2] <= `HEX_DS;
+			display24[1] <= `HEX_8;
+			display24[0] <= `HEX_E;
 			leds <= 12'o0000;
-			// display24 <= 24'h000000;
-			display24 <= `BOOT_DISP24;
 		end
 		else if (de10_sel & de10_we) begin
 			case (de10_addr)
-			3'o0:	display24[3:0] <= de10_wdata[3:0];
-			3'o1:	display24[7:4] <= de10_wdata[3:0];
-			3'o2:	display24[11:8] <= de10_wdata[3:0];
-			3'o3:	display24[15:12] <= de10_wdata[3:0];
-			3'o4:	display24[19:16] <= de10_wdata[3:0];
-			3'o5:	display24[23:20] <= de10_wdata[3:0];
+			3'o0:	display24[0] <= de10_wdata[7:0];
+			3'o1:	display24[1] <= de10_wdata[7:0];
+			3'o2:	display24[2] <= de10_wdata[7:0];
+			3'o3:	display24[3] <= de10_wdata[7:0];
+			3'o4:	display24[4] <= de10_wdata[7:0];
+			3'o5:	display24[5] <= de10_wdata[7:0];
 			3'o7:	leds <= de10_wdata[11:0];
 			default: ;
 			endcase
@@ -191,82 +219,57 @@ module de10(
 	wire de10_2_we;
 	wire [11:0] de10_2_wdata;
 	wire [11:0] de10_2_rdata = 12'o0000;
+	wire [11:0]	status_2;			// Status output
+
 	pdp8 pdp8_2 (
 		.clk(clk), .rst(rst),
-		.switch_reg(12'o0000), .status(status),
+		.switch_reg(12'o0000), .status(status_2),
 		.tty_rx(1'b1), .tty_tx(),
 		.gps_rx(gps_rx), .gps_tx(),
 		.de10_sel(de10_2_sel), .de10_addr(de10_2_addr), .de10_we(de10_2_we),
 		.de10_wdata(de10_2_wdata), .de10_rdata(de10_2_rdata)
 		);
+
 	reg [11:0] leds_2;
-	reg [23:0] display24_2;
+	reg [7:0] display24_2 [0:5];
 	always @(posedge clk) begin
 		if (rst) begin
+			display24_2[5] <= `HEX_P;
+			display24_2[4] <= `HEX_D;
+			display24_2[3] <= `HEX_P;
+			display24_2[2] <= `HEX_8;
+			display24_2[1] <= `HEX_DS;
+			display24_2[0] <= `HEX_2;
 			leds_2 <= 12'o0000;
-			display24_2 <= 24'h9d908e;
 		end
 		else if (de10_2_sel & de10_2_we) begin
 			case (de10_2_addr)
-			3'o0:	display24_2[3:0] <= de10_2_wdata[3:0];
-			3'o1:	display24_2[7:4] <= de10_2_wdata[3:0];
-			3'o2:	display24_2[11:8] <= de10_2_wdata[3:0];
-			3'o3:	display24_2[15:12] <= de10_2_wdata[3:0];
-			3'o4:	display24_2[19:16] <= de10_2_wdata[3:0];
-			3'o5:	display24_2[23:20] <= de10_2_wdata[3:0];
+			3'o0:	display24_2[0] <= de10_2_wdata[7:0];
+			3'o1:	display24_2[1] <= de10_2_wdata[7:0];
+			3'o2:	display24_2[2] <= de10_2_wdata[7:0];
+			3'o3:	display24_2[3] <= de10_2_wdata[7:0];
+			3'o4:	display24_2[4] <= de10_2_wdata[7:0];
+			3'o5:	display24_2[5] <= de10_2_wdata[7:0];
 			3'o7:	leds_2 <= de10_2_wdata[11:0];
 			default: ;
 			endcase
 		end
 	end
 
-	wire ok = 1'b1;
 	//use KEY[1] to select between core 0 and core 1
-	SEG7_LUT lut0((~KEY[1]?display24_2[3:0]:display24[3:0]), 	 ok, HEX0[6:0]);	// ss
-	SEG7_LUT lut1((~KEY[1]?display24_2[7:4]:display24[7:4]),   	 ok, HEX1[6:0]);
-	SEG7_LUT lut2((~KEY[1]?display24_2[11:8]:display24[11:8]), 	 ok, HEX2[6:0]);	// mm
-	SEG7_LUT lut3((~KEY[1]?display24_2[15:12]:display24[15:12]), ok, HEX3[6:0]);
-	SEG7_LUT lut4((~KEY[1]?display24_2[19:16]:display24[19:16]), ok, HEX4[6:0]);	// hh
-	SEG7_LUT lut5((~KEY[1]?display24_2[23:20]:display24[23:20]), ok, HEX5[6:0]);
-	assign LEDR[9:0] = (~KEY[1])?leds[9:0]:leds_2[9:0];
-
-	// assign HEX0[7] = ~gps_A;
-	assign HEX0[7] = 1'b1;
-	assign HEX1[7] = 1'b1;
-	assign HEX2[7] = 1'b1;
-	assign HEX3[7] = 1'b1;
-	assign HEX4[7] = 1'b1;
-	assign HEX5[7] = 1'b1;
-
-	assign switch_reg = { KEY, SW };
+	// HEXx are Common Cathode, need to be inverted
+	assign HEX0 = ~((~KEY[1])?display24_2[0]:display24[0]);	// ss
+	assign HEX1 = ~((~KEY[1])?display24_2[1]:display24[1]);
+	assign HEX2 = ~((~KEY[1])?display24_2[2]:display24[2]);	// mm
+	assign HEX3 = ~((~KEY[1])?display24_2[3]:display24[3]);
+	assign HEX4 = ~((~KEY[1])?display24_2[4]:display24[4]);	// hh
+	assign HEX5 = ~((~KEY[1])?display24_2[5]:display24[5]);
+	// assign LEDR[9:0] = (~KEY[1])?leds_2[9:0]:leds[9:0];
+	assign LEDR[7:0] = (~KEY[1])?leds_2[7:0]:leds[7:0];
+	// assign LEDR[8] = pdp8.cpu.cpu_ion;
+	assign LEDR[8] = status[11];
+	assign LEDR[9] = ~gps_rx;
 
 endmodule
 
 // https://www.dcode.fr/7-segment-display
-module SEG7_LUT	(
-	input	[3:0]		hex_in,
-	input				en,		// enable
-	output	reg [6:0]	seg_out
-);
-	always @(*) begin
-		if (en) case(hex_in)	//  GFEDCBA
-		4'h0: seg_out = 7'b1000000;	// 0
-		4'h1: seg_out = 7'b1111001;	// 1	//	-- A --
-		4'h2: seg_out = 7'b0100100;	// 2	//	|	  |
-		4'h3: seg_out = 7'b0110000;	// 3	//	F	  B
-		4'h4: seg_out = 7'b0011001;	// 4	//	|	  |
-		4'h5: seg_out = 7'b0010010;	// 5	//	-- G --
-		4'h6: seg_out = 7'b0000010;	// 6	//	|	  |
-		4'h7: seg_out = 7'b1111000;	// 7	//	E	  C
-		4'h8: seg_out = 7'b0000000;	// 8	//	|	  |
-		4'h9: seg_out = 7'b0011000;	// 9	//	-- D --
-		4'ha: seg_out = 7'b0001000;	// A
-		4'hb: seg_out = 7'b0111111;	// -
-		4'hc: seg_out = 7'b0001100;	// P
-		4'hd: seg_out = 7'b0100001;	// D
-		4'he: seg_out = 7'b0000110;	// E
-		4'hf: seg_out = 7'b1111111;	// ' '
-		endcase
-		else seg_out  = 7'b1111111;	// disable
-	end
-endmodule

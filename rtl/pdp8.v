@@ -111,16 +111,20 @@ module pdp8 (
 
 	always @(posedge clk) begin
 		// ION Queued? May be overwritten by IOF command
-		if (ion_delay) begin
-			cpu_ion <= 1;
-			ion_delay <= 0;
-		end
+		// if (ion_delay) begin
+		// 	cpu_ion <= 1;
+		//	ion_delay <= 0;
+		// end
 		
 		// on a JMP or JMP latch the IB into IF, update the InstructionFiled Register
 		if (non_seq) begin
 			if_latch <= ib_buf;
 			// ion_delay <= jmp_delay;
 			jmp_delay <= 0;
+			if (ion_delay) begin
+				cpu_ion <= 1;
+				ion_delay <= 0;
+			end
 		end
 		
 		if (u_irq) begin
@@ -330,7 +334,7 @@ module pdp8 (
 	// DE10 Interface
 	//=====================================================
 	assign de10_sel = io_req & (io_dev == `DEV_DE10);
-	wire de10_read = (io_op==3'O6);
+	wire de10_read = (de10_sel & (io_op==3'O6));
 	wire de10_sac = (de10_sel & de10_read);
 	// always @(posedge clk) begin
 	// 	if (de10_sel) begin
@@ -414,7 +418,7 @@ module pdp8_cpu (
 	input				cpu_ion,	// interrupts enabled
 	input				cpu_irq,	// interrupt request
 	output reg			cpu_iack,	// interrupt acknowledge
-	output reg			cpu_iret,	// Interrupt acknowledge
+	output reg			cpu_iret,	// Interrupt return
 	output wire			cpu_link,	// LINK register from the core
 
 	// Switch Register/Status Leds
@@ -438,7 +442,8 @@ module pdp8_cpu (
 	//-----------------------------------------------------
 	// Instruction Decomposition
 	//-----------------------------------------------------
-	assign status = {op_opr, op_iot, op_jmp|op_jms, op_dca|op_isz|op_tad|op_and, state[7:0]};
+	// assign status = {op_opr, op_iot, op_jmp|op_jms, op_dca|op_isz|op_tad|op_and, state[7:0]};
+	assign status = { ~cpu_ion, op_iot, op_jmp|op_jms, op_dca|op_isz|op_tad|op_and, state[7:0]};
 
 	wire [11:0] insn = (state==`STATE_EXECUTE)?mem_dout:insn_last;
 	reg [11:0] insn_last;
