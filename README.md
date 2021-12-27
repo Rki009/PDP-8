@@ -68,6 +68,62 @@ This is done with 2 cores, each running their own GPS code to demonstrate the mu
 
 The PDP-8 source code is included for the GPS application.
 
+## DE10 FPGA Board Interface
+There are two serial interface provided. The standard PDP-8 TTY interface and a second UART interface for the serial GPS connection.
+
+### TTY UART Interface (Console)
+The TTY is a standard PDP-8 teletype interface supporting a keyboard and printer.
+The TTY serial UART is 9600 baud, 8 bit, no parity. Standard 7 bit ASCII is expected.
+The PDP-8 original teletypes only used UPPERCASE ASCII with the parity bit always set.
+The PDP-8 paper tape reader/punch used all 8 bit.
+
+The DE10 TTY signal connections are:
+```
+GPIO 7	Pin 8 	PIN_W7	tx data to the console
+GPIO 9	Pin 10	PIN_V5	rx data from the console
+```
+
+### GPS UART Interface
+The GPS serial UART is 9600 baud, 8 bit, no parity (NMEA Standard).
+
+The DE10 GPS signal connections are:
+```
+ARDUINO_IO[0]	input	Rx from GPS
+ARDUINO_IO[1]	output	Tx to GPS
+ARDUINO_IO[2]	input	PPS from GPS
+```
+
+The PDP-8 GPS Uart IOTs are:
+
+```
+GPS Uart IOTs
+-------------
+GPSSKP=6431		/ GPS - SKIP IF CHAR AVAILABLE
+GPSKIE=6435		/ GPS - INTERUPT ENABLE
+GPSRCV=6436		/ GPS - READ CHARACTER AND CLEAR THE FLAG
+GPSTCF=6442		/ GPS - CLEAR THE PRINTER FLAG
+```
+
+### DE10 Seven Segment and LEDs Interface
+The DE10 IOT instructions D10S0, D10S1, D10S1, ...  latch the lower 8 bits of the AC each of the 6 seven segment displays.
+The AC value is unchanged.
+This is for the seven segments plus the decimal point in the format "PGFEDCBA".
+To display numbers or characters the PDP-8 should map the ASCII value of the character to the common anode (1 = on) representation.
+The discrete LEDs can be written with value in the AC and D10LED IOT instruction. The AC value is unchanged.
+
+```
+Seven Segment IOTs
+------------------ 
+D10S0=6470		/ DE10 - 7 SEGMENT 0
+D10S1=6471		/ DE10 - 7 SEGMENT 1
+D10S2=6472		/ DE10 - 7 SEGMENT 2
+D10S3=6473		/ DE10 - 7 SEGMENT 3
+D10S4=6474		/ DE10 - 7 SEGMENT 4
+D10S5=6475		/ DE10 - 7 SEGMENT 5
+D10IN=6476		/ DE10 - READ, NOT IMPLEMENTED
+D10LED=6477		/ DE10 - OUTPUT TO LEDS
+```
+
 ## Installation
 
 - Sources are provided for all tools
