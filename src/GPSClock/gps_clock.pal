@@ -95,16 +95,15 @@ MINUTE,	0000				/ MINUTE IN BCD
 SECOND,	0000				/ SECOND IN BCD
 TZ,		7					/ BANGKOK
 MHR24,	7750				/ -24, CORRECTION FOR 24 HR ROLLOVER
+NMEAOK,	0000				/ NON-ZERO = OK
 
 
-// HEXF=	JMS I .;	HEXFUN
 HEXF,	HEXFUN				/ CONVERT AC HEX CHAR TO VALUE
 XOR,	XORFUN				/ EXCLUSIVE OR FUNCTION
 DISPLAY,SEGFUN				/ DISPLAY THE AC ON 7 SEGMENTS
 BIN2BCD,BINBCD				/ CONVERT BIN TO BCD
 BCD2BIN,BCDBIN				/ CONVERT BCD TO BIN
 
-// HEXF=	JMS I .;	HEXFUN
 
 
 /==============================================
@@ -113,6 +112,7 @@ BCD2BIN,BCDBIN				/ CONVERT BCD TO BIN
 		*0200				/ LOCATE PROGRAM STARTING AT ADDR 200
 START,	CLA					/ CLEAR ACCUMULATOR
 		CLL					/ CLEAR AC LINK
+		NL0100				/ '-'
 		D10S0				/ CLEAR 7 SEG DISPLAY
 		D10S1				/ CLEAR 7 SEG DISPLAY
 		D10S2				/ CLEAR 7 SEG DISPLAY
@@ -126,6 +126,9 @@ START,	CLA					/ CLEAR ACCUMULATOR
 		GPSTCF				/ GPS - CLEAR THE PRINTER FLAG
 		CLA IAC				/ AC = 1 (ENABLE)
 		GPSKIE				/ GPS - INTERRUPT ENABLE
+		NL7777				/ OUTPUT A FEW DELS TO SYNC
+		JMS TTYO
+		JMS TTYO
 		TAD HELLO			/ HELLO STRING
 		JMS PUTS
 		CLA CMA
@@ -136,6 +139,7 @@ MAIN,	CLA CLL
 		TAD CHAR			/ WAIT FOR NEXT CHARACTER
 		SNA
 		JMP MAIN2
+		AND CMASK
 		TLS					/ ECHO - WRITE AC TO THE OUTPUT DEVICE (TTY)
 		CLA
 		TAD CHAR
@@ -193,6 +197,7 @@ TTYO,	0					/ TTY OUTPUT ROUTINE. THE FIRST WORD OF
 		HLT
 
 HELLO,	.					/ 1ST WORD IS ADDR OF STRING
+		014					/ <FF>
 		015					/ <CR>
 		012					/ <LF>
 		110					/ H
@@ -209,7 +214,7 @@ HELLO,	.					/ 1ST WORD IS ADDR OF STRING
 		041					/ !
 		015					/ <CR>
 		012					/ <LF>
-		000					/ <EOT>
+		000					/ <NUL>
 
 
 		PAGE
@@ -359,40 +364,16 @@ STATE3,	CLA					/ 2'ND HEX OF CHECKSUM
 		JMP I GPS
 
 
-
-
-
-		PAGE
-		// HEXFUN - CONVERT ASCII TO HEX
-HEX0,	0
-MZERO,	-0060				/ - '0'
-MSEVEN,	-0007				/ -7
-MTEN,	-0012				/ -10
-HEXFUN,	0
-		AND CMASK
-		TAD MZERO
-		DCA HEX0
-		TAD HEX0
-		TAD MTEN
-		SMA					/ + = A-F
-		JMP HEXAF
-		CLA
-		TAD HEX0			/ RETURN THE HEX
-		JMP I HEXFUN
-
-HEXAF,	CLA
-		TAD HEX0
-		TAD MSEVEN
-		JMP I HEXFUN
-
-
 /======================================================================
 /	NMEA MESSAGE
 /	$GPRMC,055223.00,A,2345.25774,N,12345.17913,E,1.826,,060221,,,A*7A
 /======================================================================
+		page
 GPRMC,	4235				/ HASH VALUE OF "GPRMC"
+T5,		0000
 NMEA,	0
-		/ CLA
+		CLA
+		DCA NMEAOK			/ SET OK, WHEN ALL IS OK
 		/ TAD GPSCNT
 		CLA CLL CMA			/ -1
 		TAD GPSBUF			/ POINT TO START OF BUFFER
@@ -417,6 +398,9 @@ NMEA,	0
 		/ COLLECT "HHMMSS" AS BCD HOUR,MINUTE,SECOND
 		CLA					/ HOUR
 		TAD I AIX1
+		JMS ISDIGIT			/ Check for leading digit
+		SNA
+		JMP NMBAD
 		AND	K0017
 		RTL
 		RTL
@@ -442,6 +426,9 @@ NMEA,	0
 		RTL
 		DCA SECOND
 		TAD I AIX1
+		JMS ISDIGIT			/ Check for training digit
+		SNA					/ assume everything ok
+		JMP NMBAD
 		AND	K0017
 		TAD SECOND
 		DCA SECOND			/ SAVE SECOND IN BCD
@@ -449,7 +436,50 @@ NMEA,	0
 		/ ADJUST FOR TIMEZONE AND DISPLAY
 		JMS ADJTZ			/ ADJUST FOR TIMEZONE
 		JMS DTIME
+		NL0001
+		DCA NMEAOK
 		JMP I NMEA
+		
+NMBAD,	NL0100				/ '-'
+		D10S0				/ CLEAR 7 SEG DISPLAY
+		D10S1				/ CLEAR 7 SEG DISPLAY
+		D10S2				/ CLEAR 7 SEG DISPLAY
+		D10S3				/ CLEAR 7 SEG DISPLAY
+		D10S4				/ CLEAR 7 SEG DISPLAY
+		D10S5				/ CLEAR 7 SEG DISPLAY
+		cla
+		DCA NMEAOK
+		JMP I NMEA
+
+
+		page
+/======================================================================
+/	Support Functions
+/======================================================================
+/ ISDIGIT - IS IT A VALID ASCII DIGIT
+/	RETURN	- ASCII VALUE IF OK
+/			0000 - ZERO IF BAD
+ASCII0, "0
+ASCII9, "9
+T9,		0000
+ISDIGIT, 0000
+		DCA T9
+		TAD ASCII0
+		CIA
+		TAD T9
+		SPA
+		JMP ISDBAD			/ LESS THAN '0'
+		cla
+		TAD T9
+		CIA
+		TAD ASCII9
+		SPA
+		JMP ISDBAD			/ GREATER THAN '9'
+		CLA
+		TAD T9
+		JMP I ISDIGIT
+ISDBAD, CLA					/ NOT A DIGIT, RETURN 0000
+		JMP I ISDIGIT
 
 
 		/------------------------------
@@ -481,6 +511,29 @@ READTZ, 0000
 		AND K0037
 		DCA TZ				/ SAVE SR[4..0]
 		JMP I READTZ
+
+		// HEXFUN - CONVERT ASCII TO HEX
+HEX0,	0
+MZERO,	-0060				/ - '0'
+MSEVEN,	-0007				/ -7
+MTEN,	-0012				/ -10
+HEXFUN,	0
+		AND CMASK
+		TAD MZERO
+		DCA HEX0
+		TAD HEX0
+		TAD MTEN
+		SMA					/ + = A-F
+		JMP HEXAF
+		CLA
+		TAD HEX0			/ RETURN THE HEX
+		JMP I HEXFUN
+
+HEXAF,	CLA
+		TAD HEX0
+		TAD MSEVEN
+		JMP I HEXFUN
+
 
 
 /==============================================
@@ -633,22 +686,22 @@ SEGFUN,	0
 		DCA AIX2
 		CLA
 		TAD I AIX2
-		D10S0					/ DISPLAY 0
+		D10S0				/ DISPLAY 0
 		CLA
 		TAD I AIX2
-		D10S1					/ DISPLAY 1
+		D10S1				/ DISPLAY 1
 		CLA
 		TAD I AIX2
-		D10S2					/ DISPLAY 2		
+		D10S2				/ DISPLAY 2		
 		CLA
 		TAD I AIX2
-		D10S3					/ DISPLAY 3
+		D10S3				/ DISPLAY 3
 		CLA
 		TAD I AIX2
-		D10S4					/ DISPLAY 4
+		D10S4				/ DISPLAY 4
 		CLA
 		TAD I AIX2
-		D10S5					/ DISPLAY 5
+		D10S5				/ DISPLAY 5
 		
 		CLA
 		TAD SEGV0
@@ -684,22 +737,22 @@ DTIME,	0000
 		DCA AIX2
 		CLA
 		TAD I AIX2
-		D10S0					/ DISPLAY H1
+		D10S0				/ DISPLAY H1
 		CLA
 		TAD I AIX2
-		D10S1					/ DISPLAY H0
+		D10S1				/ DISPLAY H0
 		CLA
 		TAD I AIX2
-		D10S2					/ DISPLAY M1		
+		D10S2				/ DISPLAY M1		
 		CLA
 		TAD I AIX2
-		D10S3					/ DISPLAY M0
+		D10S3				/ DISPLAY M0
 		CLA
 		TAD I AIX2
-		D10S4					/ DISPLAY S1
+		D10S4				/ DISPLAY S1
 		CLA
 		TAD I AIX2
-		D10S5					/ DISPLAY S0
+		D10S5				/ DISPLAY S0
 
 		JMP I DTIME
 		
@@ -721,15 +774,6 @@ SVX,	0000
 /==============================================
 / SEG7 - CONVERT AC INTO 7 SEGMENT DISPLAY
 /==============================================
-/			-- A --
-/			|	  |
-/			F	  B
-/			|	  |
-/			-- G --
-/			|	  |
-/			E	  C
-/			|	  |
-/			-- D --
 SEG7,	0000
 		AND K0037
 		TAD S7TAA
@@ -739,49 +783,28 @@ SEG7,	0000
 S7TAA,	S7TAB
 S7IDX,	0000
 		
-// S7TAB,	0100			/ 0
-// 		0171			/ 1	//	-- A --
-// 		0044			/ 2	//	|	  |
-// 		0060			/ 3	//	F	  B
-// 		0031			/ 4	//	|	  |
-// 		0022			/ 5	//	-- G --
-// 		0002			/ 6	//	|	  |
-// 		0170			/ 7	//	E	  C
-// 		0000			/ 8	//	|	  |
-// 		0030			/ 9	//	-- D --
-// 		0010			/ A
-// 		0003			/ B
-// 		0106			/ C
-// 		0041			/ D
-// 		0006			/ E
-// 		0016			/ F
-// 
-// 		/ EXTRA SYMBOLS
-// 		0177			/ ' '
-// 		0077			/ -
-// 		0014			/ P
-
-// HEX DISPLAY CONSTANTS, COMMON ANODE
-S7TAB,	0077	// 0
-		0006	// 1	//	-- A --
-		0133	// 2	//	|	  |
-		0117	// 3	//	F	  B
-		0146	// 4	//	|	  |
-		0155	// 5	//	-- G --
-		0175	// 6	//	|	  |
-		0007	// 7	//	E	  C
-		0177	// 8	//	|	  |
-		0147	// 9	//	-- D --
-		0167	// A
-		0174	// B
-		0071	// C
-		0136	// D
-		0171	// E
-		0161	// F
+/ HEX DISPLAY CONSTANTS, COMMON ANODE
+/ ENCODED AS "000_0PG_FED_CBA"
+S7TAB,	0077	/ 0
+		0006	/ 1		-- A --
+		0133	/ 2		|	  |
+		0117	/ 3		F	  B
+		0146	/ 4		|	  |
+		0155	/ 5		-- G --
+		0175	/ 6		|	  |
+		0007	/ 7		E	  C
+		0177	/ 8		|	  |
+		0147	/ 9		-- D -P
+		0167	/ A
+		0174	/ B
+		0071	/ C
+		0136	/ D
+		0171	/ E
+		0161	/ F
 		/ EXTRA SYMBOLS
-		0100	// -
-		0163	// P
-		0000	// ' '
+		0100	/ -
+		0163	/ P
+		0000	/ ' '
 		
 
 /==============================================

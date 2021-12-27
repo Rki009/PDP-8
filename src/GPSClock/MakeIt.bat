@@ -31,6 +31,7 @@ exit \b
 
 :oops
 @echo "****  OOPS  ****"
+@type %PROJ%.err
 @pause
 @goto again
 
