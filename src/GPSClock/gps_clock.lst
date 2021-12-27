@@ -15,7 +15,7 @@
     9        6435  GPSKIE=6435                 / GPS - INTERUPT ENABLE
    10        6436  GPSRCV=6436                 / GPS - READ CHARACTER AND CLEAR THE FLAG
    11        6442  GPSTCF=6442                 / GPS - CLEAR THE PRINTER FLAG
-   12                  
+   12              
    13        6470  D10S0=6470                  / DE10 - 7 SEGMENT 0
    14        6471  D10S1=6471                  / DE10 - 7 SEGMENT 1
    15        6472  D10S2=6472                  / DE10 - 7 SEGMENT 2
@@ -73,8 +73,8 @@
    61 00025  0000  TMP2,   0000
    62              
    63              
-   64 00026  0000  CHAR,   0000                / IF !=0, RECIEVED CHARACTER
-   65 00027  0000  CHAR2,  0000                / IF !=0, RECIEVED CHARACTER
+   64 00026  0000  TTYCH,  0000                / IF !=0, TTY RECIEVED CHARACTER
+   65 00027  0000  CHAR,   0000                / IF !=0, GPS RECIEVED CHARACTER
    66              
    67              / CONSTANTS
    68 00030  0377  BMASK,  0377
@@ -101,7 +101,7 @@
    89 00053  0000  GPSCHK, 0                   / GPS CHECKSUM (SUM BETWEEN '$' AND '*')
    90 00054  0000  DOGPS,  0                   / FLAG FOR GPS MESSAGE READY TO PROCESS
    91              
-   92              // GPS TIME
+   92              / GPS TIME
    93 00055  0000  HOUR,   0000                / HOUR IN BCD
    94 00056  0000  MINUTE, 0000                / MINUTE IN BCD
    95 00057  0000  SECOND, 0000                / SECOND IN BCD
@@ -124,9 +124,9 @@
   106              
   107              
   108              
-  109              /==============================================
+  109              /===========================================================
   110              /   START
-  111              /==============================================
+  111              /===========================================================
   112        0200          *0200               / LOCATE PROGRAM STARTING AT ADDR 200
   113 00200  7200  START,  CLA                 / CLEAR ACCUMULATOR
   114 00201  7100          CLL                 / CLEAR AC LINK
@@ -145,114 +145,114 @@
   127 00216  7201          CLA IAC             / AC = 1 (ENABLE)
   128 00217  6435          GPSKIE              / GPS - INTERRUPT ENABLE
   129 00220  7340          NL7777              / OUTPUT A FEW DELS TO SYNC
-  130 00221  4275          JMS TTYO
-  131 00222  4275          JMS TTYO
-  132 00223  1304          TAD HELLO           / HELLO STRING
-  133 00224  4262          JMS PUTS
+  130 00221  4273          JMS TTYO
+  131 00222  4273          JMS TTYO
+  132 00223  1302          TAD HELLO           / HELLO STRING
+  133 00224  4260          JMS PUTS
   134 00225  7240          CLA CMA
   135 00226  6035          KIE                 / ENABLE TTY INTERRUPTS
   136 00227  6001          ION
   137              
   138 00230  7300  MAIN,   CLA CLL
-  139 00231  1026          TAD CHAR            / WAIT FOR NEXT CHARACTER
+  139 00231  1026          TAD TTYCH           / WAIT FOR NEXT CHARACTER
   140 00232  7450          SNA
-  141 00233  5242          JMP MAIN2
+  141 00233  5240          JMP MAIN2
   142 00234  0031          AND CMASK
   143 00235  6046          TLS                 / ECHO - WRITE AC TO THE OUTPUT DEVICE (TTY)
-  144 00236  7200          CLA
-  145 00237  1026          TAD CHAR
-  146 00240  7200          CLA                 / CHAR <= 0, INDICATE FINISHED
-  147 00241  3026          DCA CHAR
+  144                      / CLA
+  145                      / TAD TTYCH
+  146 00236  7200          CLA                 / CHAR <= 0, INDICATE FINISHED
+  147 00237  3026          DCA TTYCH
   148              
-  149 00242  4777@ MAIN2,  JMS GPS             / PROCESS ANY INCOMING GPS CHARACTERS
-  150                      
+  149 00240  4777@ MAIN2,  JMS GPS             / PROCESS ANY INCOMING GPS CHARACTERS
+  150              
 
 
 
       / PDP-8 - GPS CLOCK                                                 Page 4
 
 
-  151 00243  7300  MAIN3,  CLA CLL
-  152 00244  1054          TAD DOGPS
-  153 00245  7450          SNA                 / MESSAGE WAITING?
-  154 00246  5230          JMP MAIN
-  155 00247  4776@         JMS NMEA            / PROCESS GPS MESSAGE
-  156 00250  7300          CLA CLL
-  157 00251  3054          DCA DOGPS           / CLEAR THE FLAG
-  158 00252  5230          JMP MAIN            / WAIT FOR INTERRUPT
+  151 00241  7300  MAIN3,  CLA CLL
+  152 00242  1054          TAD DOGPS
+  153 00243  7450          SNA                 / MESSAGE WAITING?
+  154 00244  5230          JMP MAIN
+  155 00245  4776@         JMS NMEA            / PROCESS GPS MESSAGE
+  156 00246  7300          CLA CLL
+  157 00247  3054          DCA DOGPS           / CLEAR THE FLAG
+  158 00250  5230          JMP MAIN            / WAIT FOR INTERRUPT
   159              
   160              
-  161 00253  6031  ECHO,   KSF                 / ANY CHARACTERS?
-  162 00254  5253          JMP .-1
-  163 00255  6036          KRB                 / READ THE CHAR
-  164 00256  6046          TLS                 / WRITE AC TO THE OUTPUT DEVICE (TTY)
-  165 00257  6041          TSF                 / IF TTY IS READY, SKIP NEXT INSTRUCTION.
-  166 00260  5257          JMP .-1             / TTY IS NOT READY, SO CHECK AGAIN
-  167 00261  5253          JMP ECHO
+  161 00251  6031  ECHO,   KSF                 / ANY CHARACTERS?
+  162 00252  5251          JMP .-1
+  163 00253  6036          KRB                 / READ THE CHAR
+  164 00254  6046          TLS                 / WRITE AC TO THE OUTPUT DEVICE (TTY)
+  165 00255  6041          TSF                 / IF TTY IS READY, SKIP NEXT INSTRUCTION.
+  166 00256  5255          JMP .-1             / TTY IS NOT READY, SO CHECK AGAIN
+  167 00257  5251          JMP ECHO
   168              
   169              
-  170 00262  0000  PUTS,   0000                / RETURN ADDRESS
-  171 00263  3010          DCA AIX1            / STORE THAT IN AUTOINDEX REG 1
-  172 00264  1410  PUTS1,  TAD I AIX1          / INCR ADDR IN AIX1, THEN LOAD AC FROM THAT
-  173 00265  0031          AND CMASK
-  174 00266  7450          SNA                 / IF AC IS NOT ZERO, SKIP NEXT INSTRUCTION
-  175 00267  5662          JMP I PUTS          / RETURN
-  176 00270  4275          JMS TTYO            / CALL OUTPUT ROUTINE
-  177 00271  5264          JMP PUTS1           / REPEAT LOOP
+  170 00260  0000  PUTS,   0000                / RETURN ADDRESS
+  171 00261  3010          DCA AIX1            / STORE THAT IN AUTOINDEX REG 1
+  172 00262  1410  PUTS1,  TAD I AIX1          / INCR ADDR IN AIX1, THEN LOAD AC FROM THAT
+  173 00263  0031          AND CMASK
+  174 00264  7450          SNA                 / IF AC IS NOT ZERO, SKIP NEXT INSTRUCTION
+  175 00265  5660          JMP I PUTS          / RETURN
+  176 00266  4273          JMS TTYO            / CALL OUTPUT ROUTINE
+  177 00267  5262          JMP PUTS1           / REPEAT LOOP
   178              
-  179 00272  7402  NEXT,   HLT                 / HALT IF SIMULATION
+  179 00270  7402  NEXT,   HLT                 / HALT IF SIMULATION
   180                      / JMP GPS
   181                      / JMP ECHO
   182              
-  183 00273  7402  DONE,   HLT                 / THAT'S ALL FOLKS!
-  184 00274  5200          JMP START           / RESTART
+  183 00271  7402  DONE,   HLT                 / THAT'S ALL FOLKS!
+  184 00272  5200          JMP START           / RESTART
   185              
   186              
-  187 00275  0000  TTYO,   0                   / TTY OUTPUT ROUTINE. THE FIRST WORD OF
+  187 00273  0000  TTYO,   0                   / TTY OUTPUT ROUTINE. THE FIRST WORD OF
   188                                          / A SUBROUTINE MUST BE EMPTY (0) BECAUSE
   189                                          / THE JMS INSTRUCTION INSERTS THE RETURN
   190                                          / ADDR IN THIS WORD.
-  191 00276  6046          TLS                 / WRITE AC TO THE OUTPUT DEVICE (TTY)
-  192 00277  6041          TSF                 / IF TTY IS READY, SKIP NEXT INSTRUCTION.
-  193 00300  5277          JMP .-1             / TTY IS NOT READY, SO CHECK AGAIN
-  194 00301  7200          CLA                 / CLEAR AC
-  195 00302  5675          JMP I TTYO          / RETURN TO CALLER
+  191 00274  6046          TLS                 / WRITE AC TO THE OUTPUT DEVICE (TTY)
+  192 00275  6041          TSF                 / IF TTY IS READY, SKIP NEXT INSTRUCTION.
+  193 00276  5275          JMP .-1             / TTY IS NOT READY, SO CHECK AGAIN
+  194 00277  7200          CLA                 / CLEAR AC
+  195 00300  5673          JMP I TTYO          / RETURN TO CALLER
   196              
-  197 00303  7402          HLT
+  197 00301  7402          HLT
   198              
-  199 00304  0304  HELLO,  .                   / 1ST WORD IS ADDR OF STRING
-  200 00305  0014          014                 / <FF>
+  199 00302  0302  HELLO,  .                   / 1ST WORD IS ADDR OF STRING
+  200 00303  0014          014                 / <FF>
 
 
 
       / PDP-8 - GPS CLOCK                                                 Page 5
 
 
-  201 00306  0015          015                 / <CR>
-  202 00307  0012          012                 / <LF>
-  203 00310  0110          110                 / H
-  204 00311  0105          105                 / E
-  205 00312  0114          114                 / L
-  206 00313  0114          114                 / L
-  207 00314  0117          117                 / O
-  208 00315  0040          040                 / 
-  209 00316  0127          127                 / W
-  210 00317  0117          117                 / O
-  211 00320  0122          122                 / R
-  212 00321  0114          114                 / L
-  213 00322  0104          104                 / D
-  214 00323  0041          041                 / !
-  215 00324  0015          015                 / <CR>
-  216 00325  0012          012                 / <LF>
-  217 00326  0000          000                 / <NUL>
+  201 00304  0015          015                 / <CR>
+  202 00305  0012          012                 / <LF>
+  203 00306  0110          110                 / H
+  204 00307  0105          105                 / E
+  205 00310  0114          114                 / L
+  206 00311  0114          114                 / L
+  207 00312  0117          117                 / O
+  208 00313  0040          040                 /
+  209 00314  0127          127                 / W
+  210 00315  0117          117                 / O
+  211 00316  0122          122                 / R
+  212 00317  0114          114                 / L
+  213 00320  0104          104                 / D
+  214 00321  0041          041                 / !
+  215 00322  0015          015                 / <CR>
+  216 00323  0012          012                 / <LF>
+  217 00324  0000          000                 / <NUL>
   218              
   219              
       00376  1002
       00377  0600
   220                      PAGE
-  221              /==============================================
+  221              /===========================================================
   222              /   INTERRUPT SERVICE ROUTINE
-  223              /==============================================
+  223              /===========================================================
   224 00400  3003  IRQSVR, DCA SAVEAC
   225 00401  7004          RAL
   226 00402  3004          DCA SAVEL
@@ -267,7 +267,7 @@
   235 00407  5213          JMP IRQ1
   236 00410  7200          CLA
   237 00411  6036          KRB                 / READ THE CHAR
-  238 00412  3026          DCA CHAR
+  238 00412  3026          DCA TTYCH
   239              
   240                      /------------------------------
   241                      / GPS ...
@@ -284,7 +284,7 @@
       / PDP-8 - GPS CLOCK                                                 Page 6
 
 
-  249                      // D10LED
+  249                      / D10LED
   250 00421  4777@         JMS NEWCH
   251 00422  5223          JMP RETI
   252              
@@ -292,25 +292,25 @@
   254 00424  1004          TAD SAVEL
   255 00425  7010          RAR
   256 00426  1003          TAD SAVEAC
-  257 00427  6001          ION                 /INTERRUPTS BACK ON AFTER JMP
-  258 00430  5400          JMP I 0             /RETURN FROM INTERRUPT
+  257 00427  6001          ION                 / INTERRUPTS BACK ON AFTER JMP
+  258 00430  5400          JMP I 0             / RETURN FROM INTERRUPT
   259              
   260              
   261              
       00577  2224
   262                      PAGE
-  263              /==============================================
+  263              /===========================================================
   264              /   GPS PROCESSING
-  265              /==============================================
+  265              /===========================================================
   266                      PAGE
   267 00600  0000  GPS,    0000
   268 00601  4777@         JMS GETCH           / GET NEXT CHAR
   269 00602  7510          SPA
   270 00603  5600          JMP I GPS           / EOF, NOTHING THERE
   271                      / D10LED
-  272 00604  3026          DCA CHAR
-  273                      // READY TO PROCESS INTERRUPT
-  274 00605  1026          TAD CHAR            / IF CR, RESET TO STATE 0
+  272 00604  3027          DCA CHAR
+  273                      / READY TO PROCESS INTERRUPT
+  274 00605  1027          TAD CHAR            / IF CR, RESET TO STATE 0
   275 00606  7041          CIA
   276 00607  1034          TAD CR
   277 00610  7440          SZA
@@ -318,12 +318,12 @@
   279 00612  1046          TAD SADDR0
   280 00613  3045          DCA STATE
   281 00614  5600          JMP I GPS
-  282                      
+  282              
   283                      /------------------------------
   284                      / SEARCH FOR '$', START OF MESSAGE
   285                      /------------------------------
   286 00615  7200  STATE0, CLA
-  287 00616  1026          TAD CHAR            / IF '$', NEXT STATE
+  287 00616  1027          TAD CHAR            / IF '$', NEXT STATE
   288 00617  7041          CIA
   289 00620  1032          TAD DOLLAR
   290 00621  7440          SZA
@@ -344,7 +344,7 @@
   299                      / COLLECT MESSAGE
   300                      /------------------------------
   301 00630  7200  STATE1, CLA
-  302 00631  1026          TAD CHAR            / IF '*', NEXT STATE
+  302 00631  1027          TAD CHAR            / IF '*', NEXT STATE
   303 00632  7041          CIA
   304 00633  1033          TAD STAR
   305 00634  7440          SZA
@@ -358,7 +358,7 @@
   313                      / TAD GPSSUM
   314                      / AND BMASK         / SUM IS 8 BITS ONLY
   315                      / DCA GPSSUM
-  316 00642  1026          TAD CHAR            / CHECKSUM IS XOR OF ALL CHARS BETWEEN '$' AND '*'
+  316 00642  1027          TAD CHAR            / CHECKSUM IS XOR OF ALL CHARS BETWEEN '$' AND '*'
   317 00643  0031          AND CMASK           / JUST 7 BIT ASCII SUM
   318 00644  3020          DCA ARG1
   319 00645  1052          TAD GPSSUM
@@ -373,7 +373,7 @@
   328 00656  7001          IAC
   329 00657  0031          AND CMASK           / LIMIT TO 128 CHARACTERS
   330 00660  3044          DCA GPSCNT
-  331 00661  1026          TAD CHAR
+  331 00661  1027          TAD CHAR
   332 00662  3442          DCA I INDEX         / SAVE THE CHARACTER
   333 00663  5600          JMP I GPS
   334              
@@ -382,7 +382,7 @@
   337 00664  7200  STATE2, CLA                 / 1'ST HEX OF CHECKSUM
   338 00665  1051          TAD SADDR3
   339 00666  3045          DCA STATE
-  340 00667  1026          TAD CHAR
+  340 00667  1027          TAD CHAR
   341 00670  4463          JMS I HEXF
   342 00671  7106          CLL RTL
   343 00672  7006          RTL
@@ -398,7 +398,7 @@
 
   348 00676  1046          TAD SADDR0
   349 00677  3045          DCA STATE
-  350 00700  1026          TAD CHAR            / CONVERT TO HEX VALUE
+  350 00700  1027          TAD CHAR            / CONVERT TO HEX VALUE
   351 00701  4463          JMS I HEXF
   352 00702  1053          TAD GPSCHK
   353 00703  3053          DCA GPSCHK          / ADD 2 HEX VALUES
@@ -409,7 +409,7 @@
   358 00710  3053          DCA GPSCHK
   359 00711  1053          TAD GPSCHK          / IF MESSAGE OK
   360 00712  7450          SNA
-  361                      // JMS NMEA         / PROCESS THE MESSAGE
+  361                      / JMS NMEA         / PROCESS THE MESSAGE
   362 00713  2054          ISZ DOGPS           / HANDLE IN MAIN LOOP
   363 00714  7000          NOP
   364 00715  5600          JMP I GPS
@@ -420,7 +420,7 @@
   369              /   $GPRMC,055223.00,A,2345.25774,N,12345.17913,E,1.826,,060221,,,A*7A
   370              /======================================================================
       00777  2234
-  371                      page
+  371                      PAGE
   372 01000  4235  GPRMC,  4235                / HASH VALUE OF "GPRMC"
   373 01001  0000  T5,     0000
   374 01002  0000  NMEA,   0
@@ -456,7 +456,7 @@
   398                      / COLLECT "HHMMSS" AS BCD HOUR,MINUTE,SECOND
   399 01026  7200          CLA                 / HOUR
   400 01027  1410          TAD I AIX1
-  401 01030  4777@         JMS ISDIGIT         / Check for leading digit
+  401 01030  4777@         JMS ISDIGIT         / CHECK FOR LEADING DIGIT
   402 01031  7450          SNA
   403 01032  5275          JMP NMBAD
   404 01033  0041          AND K0017
@@ -484,8 +484,8 @@
   426 01057  7006          RTL
   427 01060  3057          DCA SECOND
   428 01061  1410          TAD I AIX1
-  429 01062  4777@         JMS ISDIGIT         / Check for training digit
-  430 01063  7450          SNA                 / assume everything ok
+  429 01062  4777@         JMS ISDIGIT         / CHECK FOR TRAINING DIGIT
+  430 01063  7450          SNA                 / ASSUME EVERYTHING OK
   431 01064  5275          JMP NMBAD
   432 01065  0041          AND K0017
   433 01066  1057          TAD SECOND
@@ -497,7 +497,7 @@
   439 01072  7301          NL0001
   440 01073  3062          DCA NMEAOK
   441 01074  5602          JMP I NMEA
-  442                      
+  442              
   443 01075  7303  NMBAD,  NL0100              / '-'
   444 01076  6470          D10S0               / CLEAR 7 SEG DISPLAY
   445 01077  6471          D10S1               / CLEAR 7 SEG DISPLAY
@@ -511,7 +511,7 @@
   447 01101  6473          D10S3               / CLEAR 7 SEG DISPLAY
   448 01102  6474          D10S4               / CLEAR 7 SEG DISPLAY
   449 01103  6475          D10S5               / CLEAR 7 SEG DISPLAY
-  450 01104  7200          cla
+  450 01104  7200          CLA
   451 01105  3062          DCA NMEAOK
   452 01106  5602          JMP I NMEA
   453              
@@ -519,9 +519,9 @@
       01175  1665
       01176  1225
       01177  1203
-  455                      page
+  455                      PAGE
   456              /======================================================================
-  457              /   Support Functions
+  457              /   SUPPORT FUNCTIONS
   458              /======================================================================
   459              / ISDIGIT - IS IT A VALID ASCII DIGIT
   460              /   RETURN  - ASCII VALUE IF OK
@@ -536,7 +536,7 @@
   469 01207  1202          TAD T9
   470 01210  7510          SPA
   471 01211  5223          JMP ISDBAD          / LESS THAN '0'
-  472 01212  7200          cla
+  472 01212  7200          CLA
   473 01213  1202          TAD T9
   474 01214  7041          CIA
   475 01215  1201          TAD ASCII9
@@ -571,7 +571,7 @@
   498 01236  7510          SPA                 / IF <24HR, LOAD ORIGINAL VAULE, OTHERWISE NEW (HOUR-24) VALUE
   499 01237  5241          JMP ADJTZ1          / NO ADJUSTMENT NEEDED
   500 01240  3024          DCA TMP1            / SAVE ADJUSTMENT
-  501                      
+  501              
   502 01241  7200  ADJTZ1, CLA
   503 01242  1024          TAD TMP1
   504 01243  4776@         JMS BINBCD          / CONVERT BACK TO BCD
@@ -585,7 +585,7 @@
   512 01252  3060          DCA TZ              / SAVE SR[4..0]
   513 01253  5646          JMP I READTZ
   514              
-  515                      // HEXFUN - CONVERT ASCII TO HEX
+  515                      / HEXFUN - CONVERT ASCII TO HEX
   516 01254  0000  HEX0,   0
   517 01255  7720  MZERO,  -0060               / - '0'
   518 01256  7771  MSEVEN, -0007               / -7
@@ -609,9 +609,9 @@
   536              
   537              
   538              
-  539              /==============================================
+  539              /===========================================================
   540              /   BCD MATH
-  541              /==============================================
+  541              /===========================================================
       01376  1400
       01377  1441
 
@@ -621,38 +621,38 @@
 
 
   542                      PAGE
-  543                      /BINARY TO BCD CONVERSION 3/6/65-DEC
-  544                      /ENTER WITH BINARY NUMBER «999(10))
-  545                      /IN ACCUMULATOR; EXIT WITH THREE CHARACTER
-  546                      /BCD NUMBER IN ACCUMULATOR
-  547                      /AC 0-3; AC 4-7; AC 8-11 WILL CONTAIN
-  548                      /THE BCD CHARACTERS ON EXIT
-  549                      /WEIGHTING: AC 0-3 100
+  543                      / BINARY TO BCD CONVERSION 3/6/65-DEC
+  544                      / ENTER WITH BINARY NUMBER LESS THAN "999"
+  545                      / IN ACCUMULATOR; EXIT WITH THREE CHARACTER
+  546                      / BCD NUMBER IN ACCUMULATOR
+  547                      / AC 0-3; AC 4-7; AC 8-11 WILL CONTAIN
+  548                      / THE BCD CHARACTERS ON EXIT
+  549                      / WEIGHTING: AC 0-3 100
   550                      /           AC4-7 10
   551                      /           AC 8-11 1
-  552                      /STORAGE 33(10) REGISTERS
+  552                      / STORAGE 33(10) REGISTERS
   553              
-  554                      /TIME=216.0-235.2 MICRO-SECONDS PDP-8
-  555                      /IF INPUT >999 (10) RESULT IS UNSPECIFIED
+  554                      / TIME=216.0-235.2 MICRO-SECONDS PDP-8
+  555                      / IF INPUT >999 (10) RESULT IS UNSPECIFIED
   556              /EXAMPLE:   INPUT 0726 (8)
   557              /           OUTPUT 0100/0111/0000 = 470 (10)
   558 01400  0000  BINBCD, 0000
   559 01401  3226          DCA INPUT           / STORE BINARY
   560 01402  1225          TAD CONTRL          / SET UP TABLE
   561 01403  3210          DCA POINTR          / POINTERS
-  562 01404  7100          CLL 
+  562 01404  7100          CLL
   563 01405  1230          TAD COUNT           / SET BIT 7=1; 8RALS
   564 01406  3227          DCA NUMBER          / WILL PUT IT IN LINK
-  565 01407  1226          TAD INPUT   
+  565 01407  1226          TAD INPUT
   566 01410  1231  POINTR, TAD TABLE           / OR TABLE+1, TABLE+2, ETC.
   567 01411  7430          SZL                 / IF C(L)=1, INPUT>-TABLE
   568 01412  3226          DCA INPUT           / IF SO: INPUT=INPUT+TABLE
-  569 01413  7200          CLA 
-  570 01414  1227          TAD NUMBER  
+  569 01413  7200          CLA
+  570 01414  1227          TAD NUMBER
   571 01415  7004          RAL                 / PUT THIS BIT IN ANSWER
   572 01416  2210          ISZ POINTR          / UPDATE TABLE POINTER
   573 01417  7420          SNL                 / IF LINK=1, ALL DONE
-  574 01420  5206          JMP POINTR-2    
+  574 01420  5206          JMP POINTR-2
   575 01421  7106          CLL RTL             / CONVERTED 2 BCD
   576 01422  7006          RTL                 / CHARACTERS
   577 01423  1226          TAD INPUT           / SHIFT LEFT AND ADD
@@ -707,9 +707,9 @@
   620              
   621              
   622              
-  623              /==============================================
+  623              /===========================================================
   624              /   GPS INTERFACE, LOOP TO TTY
-  625              /==============================================
+  625              /===========================================================
   626 01470  6431  GPSTTY, GPSSKP              / ANYTHING FROM THE GPS?
   627 01471  5270          JMP .-1
   628 01472  6436          GPSRCV              / GET THE CHARACTER
@@ -719,9 +719,9 @@
   632 01476  5270          JMP GPSTTY
   633              
   634              
-  635              /==============================================
+  635              /===========================================================
   636              / LOGICAL XOR FUNCTION
-  637              /==============================================
+  637              /===========================================================
   638 01477  0000  XORFUN, 0000
   639 01500  7200          CLA                 / CLEAR ACCUMULATOR (AC) SINCE ALL WE HAVE IS ADD!
   640 01501  1020          TAD ARG1            / ADD (TAD) ARGONE TO THE JUST-ZEROED AC
@@ -740,9 +740,9 @@
   647              
   648              
   649                      PAGE
-  650              /==============================================
+  650              /===========================================================
   651              / DISPLAY - DISPLAY THE AC ON 7 SEG, JMS I DISPLAY
-  652              /==============================================
+  652              /===========================================================
   653 01600  0000  SEGV0,  0
   654 01601  1602  DISPA,  DISP6
   655 01602  0000  DISP6,  0000    / 6 X 7 SEGMENT DISPLAY
@@ -751,7 +751,7 @@
   658 01605  0000          0000
   659 01606  0000          0000
   660 01607  0000          0000
-  661                      
+  661              
   662 01610  0000  SEGFUN, 0
   663 01611  3200          DCA SEGV0
   664 01612  1201          TAD DISPA
@@ -773,7 +773,7 @@
   680 01632  7012          RTR
   681 01633  7012          RTR
   682 01634  4342          JMS SVX
-  683                      
+  683              
   684 01635  7200          CLA
   685 01636  1201          TAD DISPA
   686 01637  3011          DCA AIX2
@@ -791,7 +791,7 @@
   692 01645  6471          D10S1               / DISPLAY 1
   693 01646  7200          CLA
   694 01647  1411          TAD I AIX2
-  695 01650  6472          D10S2               / DISPLAY 2     
+  695 01650  6472          D10S2               / DISPLAY 2
   696 01651  7200          CLA
   697 01652  1411          TAD I AIX2
   698 01653  6473          D10S3               / DISPLAY 3
@@ -801,7 +801,7 @@
   702 01657  7200          CLA
   703 01660  1411          TAD I AIX2
   704 01661  6475          D10S5               / DISPLAY 5
-  705                      
+  705              
   706 01662  7200          CLA
   707 01663  1200          TAD SEGV0
   708 01664  5610          JMP I SEGFUN
@@ -848,7 +848,7 @@
   743 01722  6471          D10S1               / DISPLAY H0
   744 01723  7200          CLA
   745 01724  1411          TAD I AIX2
-  746 01725  6472          D10S2               / DISPLAY M1        
+  746 01725  6472          D10S2               / DISPLAY M1
   747 01726  7200          CLA
   748 01727  1411          TAD I AIX2
   749 01730  6473          D10S3               / DISPLAY M0
@@ -860,9 +860,9 @@
   755 01736  6475          D10S5               / DISPLAY S0
   756              
   757 01737  5665          JMP I DTIME
-  758                      
+  758              
   759              
-  760                      
+  760              
   761              / SVX - ADD 4 BIT HEX VALUE TO THE DISPLAY
   762 01740  0000  SEGV1,  0
   763 01741  0017  SVMASK, 0017
@@ -874,12 +874,12 @@
   769 01747  3411          DCA I AIX2
   770 01750  1340          TAD SEGV1
   771 01751  5742          JMP I SVX
-  772                      
+  772              
       01777  2000
   773                      PAGE
-  774              /==============================================
+  774              /===========================================================
   775              / SEG7 - CONVERT AC INTO 7 SEGMENT DISPLAY
-  776              /==============================================
+  776              /===========================================================
   777 02000  0000  SEG7,   0000
   778 02001  0037          AND K0037
   779 02002  1206          TAD S7TAA
@@ -888,7 +888,7 @@
   782 02005  5600          JMP I SEG7
   783 02006  2010  S7TAA,  S7TAB
   784 02007  0000  S7IDX,  0000
-  785                      
+  785              
   786              / HEX DISPLAY CONSTANTS, COMMON ANODE
   787              / ENCODED AS "000_0PG_FED_CBA"
   788 02010  0077  S7TAB,  0077    / 0
@@ -917,15 +917,15 @@
   805 02030  0100          0100    / -
   806 02031  0163          0163    / P
   807 02032  0000          0000    / ' '
-  808                      
+  808              
   809              
-  810              /==============================================
+  810              /===========================================================
   811              / CIRCULAR BUFFER FOR GPS INTERRUPT CHARACTERS
   812              /   16 CHARACTER IN LENGTH
   813              /   THE BUFFER MUST BE ALIGNED TO 16 TO ALLOW
   814              /   THE BOTTOM 4 BITS OF THE INDEXES TO BE USED
   815              /   AS A MOD 16 COUNTER, THE "PAGE" 128 WORD ALIGNS
-  816              /==============================================
+  816              /===========================================================
   817                  PAGE
   818 02200  0000  INTBUF, 0000                / GPS INTERRUPT BUFFER
   819 02201  0000          0000                / !!! THIS BUFFER MUST BE X16 ALIGNED !!!
@@ -967,8 +967,8 @@
   849 02232  3222          DCA INPTR
   850 02233  5624          JMP I NEWCH         / RETURN
   851              
-  852                      
-  853              / GETCH - GET A CHARACTER FROM THE BUFFER       
+  852              
+  853              / GETCH - GET A CHARACTER FROM THE BUFFER
   854 02234  0000  GETCH,  0000
   855 02235  7200          CLA
   856 02236  1223          TAD OUTPTR
@@ -988,10 +988,10 @@
   870 02252  0041          AND K0017
   871 02253  1221          TAD IBADDR
   872 02254  3223          DCA OUTPTR
-  873 02255  1220          TAD T3      
+  873 02255  1220          TAD T3
   874 02256  5634          JMP I GETCH
   875              
-  876                      
+  876              
   877              
   878        7400          *7400
   879 07400  0000  MSGBUF, 0000                / 128 WORD MESSAGE BUFFER
@@ -1011,53 +1011,53 @@
       / PDP-8 - GPS CLOCK                                                Page 19
                                                                     Symbol Table
 
-    1  ADJTZ  01225   HEX0   01254   NMEA   01002 
-    2  ADJTZ1 01241   HEXAF  01273   NMEAOK 00062 
-    3  AIX1   00010   HEXF   00063   NUMBER 01427 
-    4  AIX2   00011   HEXFUN 01260   OUTPTR 02223 
-    5  ARG1   00020   HOUR   00055   POINTR 01410 
-    6  ARG2   00021   IBADDR 02221   PUTS   00262 
-    7  ARG3   00022   IBEND  02220   PUTS1  00264 
-    8  ARG4   00023   INDEX  00042   READTZ 01246 
-    9  ASCII0 01200   INPTR  02222   RETI   00423 
-   10  ASCII9 01201   INPUT  01426   S7IDX  02007 
-   11  BCD2BI 00067   INTBUF 02200   S7TAA  02006 
-   12  BCDBIN 01441   IRQ1   00413   S7TAB  02010 
-   13  BIN2BC 00066   IRQCNT 00005   SADDR0 00046 
-   14  BINBCD 01400   IRQSVR 00400   SADDR1 00047 
-   15  BMASK  00030   ISDBAD 01223   SADDR2 00050 
-   16  CHAR   00026   ISDIGI 01203   SADDR3 00051 
-   17  CHAR2  00027   K0017  00041   SAVEAC 00003 
-   18  CMASK  00031   K0037  00037   SAVEL  00004 
-   19  CONTRL 01425   K0200  00035   SECOND 00057 
-   20  COUNT  01430   K0300  00040   SEG7   02000 
-   21  CR     00034   K5252  00036   SEGFUN 01610 
-   22  D10LED  6477   MAIN   00230   SEGV0  01600 
-   23  D10S0   6470   MAIN2  00242   SEGV1  01740 
-   24  D10S1   6471   MAIN3  00243   ST001  00641 
-   25  D10S2   6472   MASKKA 01466   STAR   00033 
-   26  D10S3   6473   MASKKB 01467   START  00200 
-   27  D10S4   6474   MHR24  00061   STATE  00045 
-   28  D10S5   6475   MINUTE 00056   STATE0 00615 
-   29  DISP6  01602   MSEVEN 01256   STATE1 00630 
-   30  DISPA  01601   MSGBUF 07400   STATE2 00664 
-   31  DISPLA 00065   MTEN   01257   STATE3 00675 
-   32  DOGPS  00054   MZERO  01255   SVMASK 01741 
-   33  DOLLAR 00032   NEWCH  02224   SVX    01742 
-   34  DONE   00273   NEXT   00272   T3     02220 
-   35  DTIME  01665   NL0000  7300   T5     01001 
-   36  ECHO   00253   NL0001  7301   T9     01202 
-   37  GETCH  02234   NL0002  7305   TABLE  01431 
-   38  GETCH1 02245   NL0003  7325   TEMPPP 01464 
-   39  GPRMC  01000   NL0004  7307   TEMPPQ 01465 
-   40  GPS    00600   NL0006  7327   TMP1   00024 
-   41  GPSBUF 00043   NL0100  7303   TMP2   00025 
-   42  GPSCHK 00053   NL2000  7332   TTYO   00275 
-   43  GPSCNT 00044   NL3777  7360   TZ     00060 
-   44  GPSKIE  6435   NL4000  7330   XOR    00064 
-   45  GPSRCV  6436   NL6000  7333   XORFUN 01477 
-   46  GPSSKP  6431   NL6777  7362 
-   47  GPSSUM 00052   NL7775  7346 
-   48  GPSTCF  6442   NL7776  7344 
-   49  GPSTTY 01470   NL7777  7340 
-   50  HELLO  00304   NMBAD  01075 
+    1  ADJTZ  01225   HEXAF  01273   NMEAOK 00062 
+    2  ADJTZ1 01241   HEXF   00063   NUMBER 01427 
+    3  AIX1   00010   HEXFUN 01260   OUTPTR 02223 
+    4  AIX2   00011   HOUR   00055   POINTR 01410 
+    5  ARG1   00020   IBADDR 02221   PUTS   00260 
+    6  ARG2   00021   IBEND  02220   PUTS1  00262 
+    7  ARG3   00022   INDEX  00042   READTZ 01246 
+    8  ARG4   00023   INPTR  02222   RETI   00423 
+    9  ASCII0 01200   INPUT  01426   S7IDX  02007 
+   10  ASCII9 01201   INTBUF 02200   S7TAA  02006 
+   11  BCD2BI 00067   IRQ1   00413   S7TAB  02010 
+   12  BCDBIN 01441   IRQCNT 00005   SADDR0 00046 
+   13  BIN2BC 00066   IRQSVR 00400   SADDR1 00047 
+   14  BINBCD 01400   ISDBAD 01223   SADDR2 00050 
+   15  BMASK  00030   ISDIGI 01203   SADDR3 00051 
+   16  CHAR   00027   K0017  00041   SAVEAC 00003 
+   17  CMASK  00031   K0037  00037   SAVEL  00004 
+   18  CONTRL 01425   K0200  00035   SECOND 00057 
+   19  COUNT  01430   K0300  00040   SEG7   02000 
+   20  CR     00034   K5252  00036   SEGFUN 01610 
+   21  D10LED  6477   MAIN   00230   SEGV0  01600 
+   22  D10S0   6470   MAIN2  00240   SEGV1  01740 
+   23  D10S1   6471   MAIN3  00241   ST001  00641 
+   24  D10S2   6472   MASKKA 01466   STAR   00033 
+   25  D10S3   6473   MASKKB 01467   START  00200 
+   26  D10S4   6474   MHR24  00061   STATE  00045 
+   27  D10S5   6475   MINUTE 00056   STATE0 00615 
+   28  DISP6  01602   MSEVEN 01256   STATE1 00630 
+   29  DISPA  01601   MSGBUF 07400   STATE2 00664 
+   30  DISPLA 00065   MTEN   01257   STATE3 00675 
+   31  DOGPS  00054   MZERO  01255   SVMASK 01741 
+   32  DOLLAR 00032   NEWCH  02224   SVX    01742 
+   33  DONE   00271   NEXT   00270   T3     02220 
+   34  DTIME  01665   NL0000  7300   T5     01001 
+   35  ECHO   00251   NL0001  7301   T9     01202 
+   36  GETCH  02234   NL0002  7305   TABLE  01431 
+   37  GETCH1 02245   NL0003  7325   TEMPPP 01464 
+   38  GPRMC  01000   NL0004  7307   TEMPPQ 01465 
+   39  GPS    00600   NL0006  7327   TMP1   00024 
+   40  GPSBUF 00043   NL0100  7303   TMP2   00025 
+   41  GPSCHK 00053   NL2000  7332   TTYCH  00026 
+   42  GPSCNT 00044   NL3777  7360   TTYO   00273 
+   43  GPSKIE  6435   NL4000  7330   TZ     00060 
+   44  GPSRCV  6436   NL6000  7333   XOR    00064 
+   45  GPSSKP  6431   NL6777  7362   XORFUN 01477 
+   46  GPSSUM 00052   NL7775  7346 
+   47  GPSTCF  6442   NL7776  7344 
+   48  GPSTTY 01470   NL7777  7340 
+   49  HELLO  00302   NMBAD  01075 
+   50  HEX0   01254   NMEA   01002 
