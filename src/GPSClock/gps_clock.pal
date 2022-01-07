@@ -1,8 +1,21 @@
-/ PDP-8 - GPS CLOCK
-/	RON K. IRVINE, (C) COPYRIGHT 2021
-/	ALL RIGHTS RESERVED
+/==================================================================
+/	FILE: 			GPS_CLOCK.PAL
+/	PROJECT:		PDP-8 - GPS CLOCK
+/	AUTHOR:			RON K. IRVINE
+/	COPYRIGHT:		(C) COPYRIGHT, RON K. IRVINE, 2021. ALL RIGHTS RESERVED.
 /
+/	DESCRIPTION:	PDP-8 CORE WITH GPS INTERFACE FOR DE10-LITE BOARD
 /
+/	NOTES:
+/
+/	LINKS:
+/
+/	CREATED:		RKI - NOV 2021
+/
+/	RCS:			$ID: RISCV_CPU.V,V 1.2 2021/12/07 15:24:54 RON EXP $
+/
+/==================================================================
+
 
 /GPS INTERFACE
 GPSSKP=6431					/ GPS - SKIP IF CHAR AVAILABLE
