@@ -22,9 +22,12 @@ module pdp8 (
 	// UART
 	input 				tty_rx,			// Receive  data line input
 	output wire 		tty_tx,
+
+`ifdef ADD_GPS
 	// GPS
 	input 				gps_rx,			// Receive  data line input
 	output wire 		gps_tx,
+`endif
 	
 	// DE10
 	output wire 		de10_sel,
@@ -87,8 +90,14 @@ module pdp8 (
 	reg ion_delay;		// delay ION by one instruction
 	reg	jmp_delay;		// turn on at next jump
 	wire tty_irq;
+
+`ifdef ADD_GPS
 	wire gps_irq;
 	wire irq_request = tty_irq | gps_irq;
+`else
+	wire irq_request = tty_irq;
+`endif
+
 	//- reg cpu_rtf;		// restore flags
 	assign cpu_irq = cpu_ion & irq_request & ~jmp_delay;
 
@@ -363,6 +372,7 @@ module pdp8 (
 		.tty_rx(tty_rx), .tty_tx(tty_tx) );
 
 
+`ifdef ADD_GPS
 	//=====================================================
 	// GPS UART
 	//=====================================================
@@ -381,6 +391,7 @@ module pdp8 (
 	assign io_slk = (cpu_slk);
 	assign io_skip = (cpu_skip | tty_skip | gps_skip);
 	assign io_ack = (cpu_sel | de10_sel | tty_ack | gps_ack);
+`endif
 	
 endmodule
 

@@ -271,3 +271,6 @@
 `endif
 `define MEM_AWIDTH ($clog2(`MEM_SIZE_K*1024))
 
+// add a second UART for GPS interface
+`define ADD_GPS
+

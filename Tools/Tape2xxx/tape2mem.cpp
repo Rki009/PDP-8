@@ -6,7 +6,7 @@
 #include <math.h>
 #include "getopt.h"
 
-uint16_t mem[4096];		// 4K memory
+uint16_t mem[32*1024];		// 32K memory
 
 int verbose = 0;
 
@@ -127,6 +127,7 @@ void process(const char* infile) {
 
 void usage(void) {
 	printf("Usage: tape2mem [-v] infile.bin outfile.mem\n");
+	printf("Options:  -k n     Memory Size in K bytes\n");
 	printf("Options:  -v       verbose\n");
 }
 
@@ -137,8 +138,9 @@ int main(int argc, char** argv) {
 	int c;
 	(void) bflag;	// use it to avoid compiler warning
 	(void) cvalue;	// use it to avoid compiler warning
+	int mem_size = 4;	// default to 4K
 
-	while((c = getopt(argc, argv, "vbc:")) != -1) {
+	while((c = getopt(argc, argv, "vbc:k:")) != -1) {
 		switch(c) {
 		case 'v':
 			++verbose;
@@ -148,6 +150,9 @@ int main(int argc, char** argv) {
 			break;
 		case 'c':
 			cvalue = optarg;
+			break;
+		case 'k':
+			mem_size = atoi(optarg);
 			break;
 		case '?':
 			if(optopt == 'c') {
@@ -183,7 +188,12 @@ int main(int argc, char** argv) {
 	const char* infile = argv[optind];
 	const char* outfile = argv[optind+1];
 
-	int len = sizeof(mem)/sizeof(uint16_t);
+	// int len = sizeof(mem)/sizeof(uint16_t);
+	int len = mem_size * 1024;
+	if (mem_size > sizeof(mem)/sizeof(uint16_t)) {
+		printf("Bad memory size: %d\n", mem_size);
+	}
+	
 	for(int i=0; i<len; ++i) {
 		mem[i] = 0;
 	}

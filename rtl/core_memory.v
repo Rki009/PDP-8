@@ -33,7 +33,9 @@ module core_memory #(parameter KSIZE=32) (
 
 `ifdef QUARTUS
 	initial begin
-		$readmemh("../src/GPSClock/gps_clock.mem", mem);
+		// $readmemh("../src/GPSClock/gps_clock.mem", mem);
+		// $readmemh("../src/Focal-71/Bin/Focal-4k.mem", mem);
+		$readmemh("../src/Focal-71/Bin/Focal-8e.mem", mem);
 	end
 `endif
 	

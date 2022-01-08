@@ -6,8 +6,8 @@
 //	==========================================
 //	GPIO 5		Pin 6		PIN_??	dtr signal
 //	GPIO 7		Pin 8		PIN_W7	tx data
-//	GPIO 9		Pin 10	PIN_V5	rx data
-//	GND			Pin 12	GND		GND
+//	GPIO 9		Pin 10		PIN_V5	rx data
+//	GND			Pin 12		GND		GND
 
 // Connect GPS Port,
 //	============================================
@@ -17,7 +17,7 @@
 //	ARDUINO_IO[1]		Pin ?		Tx to GPS
 //	ARDUINO_IO[2]		Pin ?		PPS from GPS
 
-`define DUAL_CORE 	1
+// `define DUAL_CORE 	1
 // `define BOOT_DISP24	24'hcDcb8E	// spell out "PDP-8E"
 
 // `define COMMON_CATHODE
@@ -213,62 +213,16 @@ module de10(
 		end
 	end
 
-	// DE10
-	wire de10_2_sel;
-	wire [2:0] de10_2_addr;
-	wire de10_2_we;
-	wire [11:0] de10_2_wdata;
-	wire [11:0] de10_2_rdata = 12'o0000;
-	wire [11:0]	status_2;			// Status output
-
-	pdp8 pdp8_2 (
-		.clk(clk), .rst(rst),
-		.switch_reg(12'o0000), .status(status_2),
-		.tty_rx(1'b1), .tty_tx(),
-		.gps_rx(gps_rx), .gps_tx(),
-		.de10_sel(de10_2_sel), .de10_addr(de10_2_addr), .de10_we(de10_2_we),
-		.de10_wdata(de10_2_wdata), .de10_rdata(de10_2_rdata)
-		);
-
-	reg [11:0] leds_2;
-	reg [7:0] display24_2 [0:5];
-	always @(posedge clk) begin
-		if (rst) begin
-			display24_2[5] <= `HEX_P;
-			display24_2[4] <= `HEX_D;
-			display24_2[3] <= `HEX_P;
-			display24_2[2] <= `HEX_8;
-			display24_2[1] <= `HEX_DS;
-			display24_2[0] <= `HEX_2;
-			leds_2 <= 12'o0000;
-		end
-		else if (de10_2_sel & de10_2_we) begin
-			case (de10_2_addr)
-			3'o0:	display24_2[0] <= de10_2_wdata[7:0];
-			3'o1:	display24_2[1] <= de10_2_wdata[7:0];
-			3'o2:	display24_2[2] <= de10_2_wdata[7:0];
-			3'o3:	display24_2[3] <= de10_2_wdata[7:0];
-			3'o4:	display24_2[4] <= de10_2_wdata[7:0];
-			3'o5:	display24_2[5] <= de10_2_wdata[7:0];
-			3'o7:	leds_2 <= de10_2_wdata[11:0];
-			default: ;
-			endcase
-		end
-	end
-
-	//use KEY[1] to select between core 0 and core 1
 	// HEXx are Common Cathode, need to be inverted
-	assign HEX0 = ~((~KEY[1])?display24_2[0]:display24[0]);	// ss
-	assign HEX1 = ~((~KEY[1])?display24_2[1]:display24[1]);
-	assign HEX2 = ~((~KEY[1])?display24_2[2]:display24[2]);	// mm
-	assign HEX3 = ~((~KEY[1])?display24_2[3]:display24[3]);
-	assign HEX4 = ~((~KEY[1])?display24_2[4]:display24[4]);	// hh
-	assign HEX5 = ~((~KEY[1])?display24_2[5]:display24[5]);
-	// assign LEDR[9:0] = (~KEY[1])?leds_2[9:0]:leds[9:0];
-	assign LEDR[7:0] = (~KEY[1])?leds_2[7:0]:leds[7:0];
-	// assign LEDR[8] = pdp8.cpu.cpu_ion;
-	assign LEDR[8] = status[11];
-	assign LEDR[9] = ~gps_rx;
+	assign HEX0 = ~display24[0];	// ss
+	assign HEX1 = ~display24[1];
+	assign HEX2 = ~display24[2];	// mm
+	assign HEX3 = ~display24[3];
+	assign HEX4 = ~display24[4];	// hh
+	assign HEX5 = ~display24[5];
+	assign LEDR[7:0] = leds[7:0];
+	assign LEDR[8] = ~tty_tx;
+	assign LEDR[9] = ~tty_rx;
 
 endmodule
 

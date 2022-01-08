@@ -1,6 +1,7 @@
 
 set PROJ1=tape2mem
 set PROJ2=tape2mif
+set PROJ3=focal2pal
 
 :again
 color 1f
@@ -8,8 +9,13 @@ cls
 
 bcc32x %PROJ1%.cpp getopt.c -o %PROJ1%.exe
 @if errorlevel 1 goto oops
+
 bcc32x %PROJ2%.cpp getopt.c -o %PROJ2%.exe
 @if errorlevel 1 goto oops
+
+bcc32x %PROJ3%.cpp getopt.c -o %PROJ3%.exe
+@if errorlevel 1 goto oops
+
 @del *.tds 2>nul 1>nul
 
 copy *.exe ..\bin
